@@ -6,5 +6,5 @@ trim_trailing_whitespace = true
 [*.rs]
 tab_width = 4
 
-[*.{js,jsx,ts,tsx,html,css}]
+[*.{js,jsx,ts,tsx,html,css,svelte}]
 tab_width = 2
