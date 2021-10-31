@@ -8,5 +8,5 @@
 
 <div>
   <CellOutput {value} />
-  <CellInput {value} />
+  <CellInput {value} on:change />
 </div>

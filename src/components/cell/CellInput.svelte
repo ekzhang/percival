@@ -1,22 +1,68 @@
 <script lang="ts">
-  import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
+  import { EditorState, basicSetup } from "@codemirror/basic-setup";
+  import { EditorView, KeyBinding, keymap } from "@codemirror/view";
+  import { indentWithTab } from "@codemirror/commands";
   import { markdown } from "@codemirror/lang-markdown";
-  import { onMount } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
+
+  const dispatch = createEventDispatcher();
 
   export let value: string;
+
+  let currentValue: string;
 
   let editorParent: HTMLDivElement;
   let view: EditorView;
 
+  function run() {
+    dispatch("change", { value: currentValue });
+  }
+
+  function makeRunKeyBinding(key: string): KeyBinding {
+    return {
+      key,
+      run: () => {
+        run();
+        return true;
+      },
+      preventDefault: true,
+    };
+  }
+
   onMount(() => {
+    currentValue = value;
     view = new EditorView({
       state: EditorState.create({
-        extensions: [basicSetup, EditorView.lineWrapping, markdown()],
         doc: value,
+        extensions: [
+          basicSetup,
+          EditorView.lineWrapping,
+          keymap.of([
+            indentWithTab,
+            makeRunKeyBinding("Shift-Enter"),
+            makeRunKeyBinding("Ctrl-Enter"),
+          ]),
+          markdown(),
+          EditorView.updateListener.of((update) => {
+            currentValue = update.state.doc.toJSON().join("\n");
+          }),
+        ],
       }),
       parent: editorParent,
     });
   });
 </script>
 
-<div bind:this={editorParent} />
+<div bind:this={editorParent} class:dirty={value !== currentValue} />
+
+<style>
+  .dirty :global(.cm-editor .cm-scroller) {
+    @apply border-orange-200;
+  }
+  .dirty :global(.cm-editor .cm-line) {
+    @apply border-orange-100;
+  }
+  .dirty :global(.cm-editor .cm-line.cm-activeLine) {
+    @apply border-orange-300;
+  }
+</style>

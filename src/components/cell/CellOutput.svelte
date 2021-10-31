@@ -36,7 +36,11 @@
     @apply my-3;
   }
 
+  .markdown-output :global(pre) {
+    @apply my-3 px-2 py-1 border rounded-sm;
+  }
+
   .markdown-output :global(code) {
-    @apply text-sm text-gray-900 px-1 py-0.5 bg-gray-50 border rounded-sm;
+    @apply text-sm text-gray-900;
   }
 </style>
