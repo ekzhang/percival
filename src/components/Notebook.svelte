@@ -2,7 +2,7 @@
   import Cell from "./cell/Cell.svelte";
 </script>
 
-<div class="space-y-3 pt-8 pb-24 px-3">
+<div class="space-y-4 pt-8 pb-24 px-3">
   <Cell type="markdown" value="# A Beginner's Notebook" />
   <Cell
     type="markdown"

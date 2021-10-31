@@ -6,5 +6,7 @@
   export let value: string;
 </script>
 
-<CellOutput {value} />
-<CellInput />
+<div>
+  <CellOutput {value} />
+  <CellInput {value} />
+</div>

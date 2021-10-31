@@ -2,3 +2,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* CodeMirror styles */
+.cm-editor .cm-scroller {
+  font-size: 0.9rem;
+  @apply font-mono bg-slate-50 rounded-sm border border-slate-200;
+}
+
+.cm-editor .cm-scroller .cm-activeLine {
+  @apply bg-inherit;
+}
+
+.cm-editor .cm-gutters {
+  border-right: 0;
+  @apply bg-slate-50;
+}
+
+.cm-editor .cm-foldGutter .cm-gutterElement {
+  display: none;
+}
+
+.cm-editor .cm-lineNumbers .cm-gutterElement {
+  display: none;
+}
+
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+.cm-editor .cm-line {
+  @apply border-transparent border-l-4 pl-3;
+}
+
+.cm-editor .cm-line.cm-activeLine {
+  @apply border-slate-300;
+}
