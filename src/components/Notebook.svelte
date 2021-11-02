@@ -2,11 +2,17 @@
   import { CellData, NotebookState } from "../lib/notebook";
 
   import Cell from "./cell/Cell.svelte";
+  import CellDivider from "./cell/CellDivider.svelte";
 
   let notebook = new NotebookState();
 
   function handleChange(cell: CellData, value: string) {
     cell.value = value;
+    notebook = notebook;
+  }
+
+  function handleCreate(index: number, type: "markdown" | "code") {
+    notebook.insertCell(index, { type, value: "" });
     notebook = notebook;
   }
 
@@ -49,12 +55,17 @@ Hopefully you see the image above!`,
   });
 </script>
 
-<div class="space-y-4 pt-8 pb-24 px-3">
-  {#each notebook.cells as cell (cell)}
+<div class="space-y-3 pt-8 pb-24 px-3">
+  {#each notebook.cells as cell, i (cell)}
+    <CellDivider on:create={(event) => handleCreate(i, event.detail.type)} />
     <Cell
       type={cell.type}
       value={cell.value}
       on:change={(event) => handleChange(cell, event.detail.value)}
     />
   {/each}
+  <CellDivider
+    on:create={(event) =>
+      handleCreate(notebook.cells.length, event.detail.type)}
+  />
 </div>

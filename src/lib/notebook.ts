@@ -13,4 +13,8 @@ export class NotebookState {
   addCell(cell: CellData) {
     this.cells.push(cell);
   }
+
+  insertCell(index: number, cell: CellData) {
+    this.cells.splice(index, 0, cell);
+  }
 }
