@@ -1,11 +1,25 @@
 <script lang="ts">
-  import SvelteMarkdown from "svelte-markdown";
+  import { unified } from "unified";
+  import remarkParse from "remark-parse";
+  import remarkMath from "remark-math";
+  import remarkRehype from "remark-rehype";
+  import rehypeKatex from "rehype-katex";
+  import rehypeStringify from "rehype-stringify";
 
   export let value: string;
+
+  const pipeline = unified()
+    .use(remarkParse)
+    .use(remarkMath)
+    .use(remarkRehype)
+    .use(rehypeKatex)
+    .use(rehypeStringify);
+
+  $: rendered = pipeline.processSync(value);
 </script>
 
 <div class="markdown-output">
-  <SvelteMarkdown source={value} />
+  {@html rendered}
 </div>
 
 <style lang="postcss">
