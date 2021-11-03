@@ -5,9 +5,11 @@
   import { markdown } from "@codemirror/lang-markdown";
   import { createEventDispatcher, onMount } from "svelte";
 
+  import type { CellData } from "../../lib/notebook";
+
   const dispatch = createEventDispatcher();
 
-  export let value: string;
+  export let data: CellData;
 
   let currentValue: string;
 
@@ -30,10 +32,10 @@
   }
 
   onMount(() => {
-    currentValue = value;
+    currentValue = data.value;
     view = new EditorView({
       state: EditorState.create({
-        doc: value,
+        doc: data.value,
         extensions: [
           basicSetup,
           EditorView.lineWrapping,
@@ -53,7 +55,7 @@
   });
 </script>
 
-<div bind:this={editorParent} class:dirty={value !== currentValue} />
+<div bind:this={editorParent} class:dirty={data.value !== currentValue} />
 
 <style>
   .dirty :global(.cm-editor .cm-scroller) {

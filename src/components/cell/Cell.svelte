@@ -30,20 +30,19 @@
       <FaTrashAlt />
     </button>
   </button>
-  <CellOutput value={data.value} />
+  <CellOutput {data} />
   {#if !data.hidden}
-    <CellInput value={data.value} on:change />
+    <CellInput {data} on:change />
   {/if}
 </div>
 
 <style lang="postcss">
   .cell {
-    position: relative;
-    min-height: 32px;
+    @apply relative min-h-[32px];
   }
 
   .cell:hover .sidebar {
-    opacity: 100%;
+    @apply opacity-100;
   }
 
   .sidebar {

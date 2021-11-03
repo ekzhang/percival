@@ -6,7 +6,9 @@
   import rehypeKatex from "rehype-katex";
   import rehypeStringify from "rehype-stringify";
 
-  export let value: string;
+  import type { CellData } from "src/lib/notebook";
+
+  export let data: CellData;
 
   const pipeline = unified()
     .use(remarkParse)
@@ -15,12 +17,17 @@
     .use(rehypeKatex)
     .use(rehypeStringify);
 
-  $: rendered = pipeline.processSync(value);
+  $: rendered =
+    data.type === "markdown" ? pipeline.processSync(data.value) : null;
 </script>
 
-<div class="markdown-output">
-  {@html rendered}
-</div>
+{#if data.type === "markdown"}
+  <div class="markdown-output">
+    {@html rendered}
+  </div>
+{:else}
+  <pre class="p-4">{data.value}</pre>
+{/if}
 
 <style lang="postcss">
   .markdown-output {
