@@ -6,7 +6,7 @@
 /* CodeMirror styles */
 .cm-editor .cm-scroller {
   font-size: 0.9rem;
-  @apply font-mono bg-slate-50 rounded-sm border border-slate-200 transition-colors;
+  @apply font-mono bg-zinc-100 rounded-sm border border-zinc-200 transition-colors;
 }
 
 .cm-editor .cm-scroller .cm-activeLine {
@@ -31,9 +31,9 @@
 }
 
 .cm-editor .cm-line {
-  @apply border-transparent border-l-4 pl-3 transition-colors;
+  @apply border-transparent border-l-4 pl-3 pr-1 transition-colors;
 }
 
 .cm-editor .cm-line.cm-activeLine {
-  @apply border-slate-300;
+  @apply border-zinc-300;
 }

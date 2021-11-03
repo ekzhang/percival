@@ -24,7 +24,7 @@
 
 <style lang="postcss">
   .markdown-output {
-    @apply font-serif text-base max-w-2xl leading-snug;
+    @apply pl-2.5 font-serif text-base max-w-2xl leading-snug;
   }
 
   .markdown-output :global(h1) {

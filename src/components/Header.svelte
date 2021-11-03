@@ -3,7 +3,7 @@
 </script>
 
 <header
-  class="h-16 border-b flex justify-center hover:bg-slate-50 transition-colors"
+  class="h-16 border-b flex justify-center hover:bg-zinc-50 transition-colors"
 >
   <div class="w-full max-w-screen-lg flex items-center px-1">
     <a href="/">
