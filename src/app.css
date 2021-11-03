@@ -4,6 +4,10 @@
 @tailwind utilities;
 
 /* CodeMirror styles */
+.cm-editor.cm-focused {
+  outline: none;
+}
+
 .cm-editor .cm-scroller {
   font-size: 0.9rem;
   @apply font-mono bg-zinc-100 rounded-sm border border-zinc-200 transition-colors;
@@ -26,12 +30,12 @@
   display: none;
 }
 
-.cm-editor.cm-focused {
-  outline: none;
+.cm-editor .cm-content {
+  @apply py-2;
 }
 
 .cm-editor .cm-line {
-  @apply border-transparent border-l-4 pl-3 pr-1 transition-colors;
+  @apply border-transparent border-l-4 pl-3 pr-2 transition-colors;
 }
 
 .cm-editor .cm-line.cm-activeLine {
