@@ -31,7 +31,7 @@
   }
 
   .divider > hr {
-    @apply absolute w-full border-dotted;
+    @apply absolute w-full border-dotted border-gray-300;
   }
 
   .divider > button {

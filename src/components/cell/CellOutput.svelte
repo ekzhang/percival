@@ -58,7 +58,7 @@
   }
 
   .markdown-output :global(pre) {
-    @apply my-3 px-2 py-1 border rounded-sm;
+    @apply my-3 px-2 py-1 border border-gray-300 rounded-sm;
   }
 
   .markdown-output :global(code) {

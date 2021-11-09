@@ -2,6 +2,7 @@
   import { fade } from "svelte/transition";
 
   import logo from "../assets/logo.svg";
+  import Link from "./Link.svelte";
 
   let about = false;
 </script>
@@ -34,29 +35,34 @@
     >
       <img src={logo} alt="Percival logo" class="h-12 mx-auto" />
       <p>
-        Percival is a reactive editor for declarative data analysis and
-        visualization, enabling flexible, high-fidelity analyses of complex
-        datasets.
+        Percival is a declarative <em>data query and visualization language</em
+        >. It provides a reactive, web-based notebook environment for exploring
+        complex datasets, producing interactive graphics, and sharing results in
+        real time.
       </p>
       <p>
-        In Percival, the user writes code in a combined data querying and
-        visualization language. The web interface provides a notebook
-        environment with a reactive execution model, making it easy to answer
-        real-world questions and communicate results.
+        Percival combines the interactive beauty of
+        <Link href="https://vega.github.io/vega/"><em>Vega</em></Link>-like
+        visualization grammars with the flexibility of
+        <Link href="https://en.wikipedia.org/wiki/Datalog"
+          ><em>Datalog</em></Link
+        > as a query language for structured, relational data. These declarative
+        components are combined through a reactive dataflow system, making it easy
+        to quickly investigate datasets. Because Percival is built on web technologies,
+        fully-interactive notebooks can be published to anyone with access to a web
+        browser, making analyses more tangible to others.
       </p>
       <p>
-        Percival supports data querying, joining, and aggregation using a custom
-        dialect of Datalog built for reactive execution, which is compiled to
-        JavaScript through a staged evaluation process. It is lightweight, has
-        no hidden workspace state, and provides a friendly and accessible editor
-        UI.
+        In addition to using Vega-Lite, Percival ships with a custom Datalog
+        compiler that integrates with its notebook runtime. This compiles the
+        query language to JavaScript through a staged evaluation process, which
+        can be extended with user-provided JavaScript code. The interface aims
+        to be lightweight, friendly, and accessible, and it has no hidden
+        workspace state.
       </p>
       <p>
-        The code is available on GitHub at <a
-          href="https://github.com/ekzhang/percival"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="underline">ekzhang/percival</a
+        The code is available on GitHub at <Link
+          href="https://github.com/ekzhang/percival">ekzhang/percival</Link
         >.
       </p>
       <button
