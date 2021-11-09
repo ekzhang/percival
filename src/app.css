@@ -5,7 +5,7 @@
 
 /* CodeMirror styles */
 .cm-editor.cm-focused {
-  outline: none;
+  outline: none !important;
 }
 
 .cm-editor .cm-scroller {

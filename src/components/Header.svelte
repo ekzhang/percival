@@ -30,21 +30,20 @@
     transition:fade={{ duration: 100 }}
   >
     <div
-      class="w-4/5 max-w-lg max-h-4/5 bg-white shadow-lg rounded-md p-4 space-y-3 text-gray-900 overflow-y-auto"
+      class="w-4/5 max-w-lg max-h-[90%] bg-white shadow-lg rounded-md p-4 space-y-3 text-gray-900 overflow-y-auto"
       on:click={(event) => event.stopPropagation()}
     >
       <img src={logo} alt="Percival logo" class="h-12 mx-auto" />
       <p>
         Percival is a declarative <em>data query and visualization language</em
         >. It provides a reactive, web-based notebook environment for exploring
-        complex datasets, producing interactive graphics, and sharing results in
-        real time.
+        complex datasets, producing interactive graphics, and sharing results.
       </p>
       <p>
         Percival combines the interactive beauty of
-        <Link href="https://vega.github.io/vega/"><em>Vega</em></Link>-like
-        visualization grammars with the flexibility of
-        <Link href="https://en.wikipedia.org/wiki/Datalog"
+        <Link external href="https://vega.github.io/vega/"><em>Vega</em></Link
+        >-like visualization grammars with the flexibility of
+        <Link external href="https://en.wikipedia.org/wiki/Datalog"
           ><em>Datalog</em></Link
         > as a query language for structured, relational data. These declarative
         components are combined through a reactive dataflow system, making it easy
@@ -62,6 +61,7 @@
       </p>
       <p>
         The code is available on GitHub at <Link
+          external
           href="https://github.com/ekzhang/percival">ekzhang/percival</Link
         >.
       </p>
