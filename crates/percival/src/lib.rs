@@ -8,14 +8,14 @@ use std::collections::HashMap;
 use chumsky::prelude::*;
 
 /// A program translation unit in the Percival language.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Program {
     /// Rules that make up the program.
     pub rules: Vec<Rule>,
 }
 
 /// Represents a single Horn clause.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rule {
     /// Head or implicand of the Horn clause.
     pub head: Fact,
@@ -24,7 +24,7 @@ pub struct Rule {
 }
 
 /// Literal part of a Horn clause, written in terms of relations.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fact {
     /// Name of the relation being referenced.
     pub name: String,
@@ -33,7 +33,7 @@ pub struct Fact {
 }
 
 /// A bound or unbound value assigned to part of a relation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Value {
     /// A simple identifier, which can be either bound or unbound.
     Id(String),
@@ -41,7 +41,7 @@ pub enum Value {
 }
 
 /// Constructs a parser combinator for the Percival language.
-fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
+pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
     let id = text::ident().labelled("ident");
 
     let value = id.map(Value::Id).labelled("value");
@@ -74,9 +74,44 @@ fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
 
 #[cfg(test)]
 mod tests {
+    use maplit::hashmap;
+
+    use super::*;
+
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn parse_single_rule() {
+        let parser = parser();
+        let result = parser.parse("tc(x, y) :- tc(x, y: z), edge(x: z, y).");
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Program {
+                rules: vec![Rule {
+                    head: Fact {
+                        name: "tc".into(),
+                        props: hashmap! {
+                            "x".into() => Value::Id("x".into()),
+                            "y".into() => Value::Id("y".into()),
+                        }
+                    },
+                    clauses: vec![
+                        Fact {
+                            name: "tc".into(),
+                            props: hashmap! {
+                                "x".into() => Value::Id("x".into()),
+                                "y".into() => Value::Id("z".into()),
+                            }
+                        },
+                        Fact {
+                            name: "edge".into(),
+                            props: hashmap! {
+                                "x".into() => Value::Id("z".into()),
+                                "y".into() => Value::Id("y".into()),
+                            }
+                        },
+                    ],
+                }],
+            },
+        );
     }
 }

@@ -6,3 +6,4 @@ edition = "2021"
 
 [dependencies]
 chumsky = "0.5.0"
+maplit = "1.0.2"
