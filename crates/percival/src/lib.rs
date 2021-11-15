@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 
+use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
 /// A program translation unit in the Percival language.
@@ -72,6 +73,80 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .then_ignore(end())
 }
 
+/// Format parser errors into a human-readable message.
+pub fn format_errors(src: &str, errors: Vec<Simple<char>>) -> String {
+    let mut reports = vec![];
+
+    for e in errors {
+        let e = e.map(|tok| tok.to_string());
+        let report = Report::build(ReportKind::Error, (), e.span().start);
+
+        let report = match e.reason() {
+            chumsky::error::SimpleReason::Unclosed { span, delimiter } => report
+                .with_message(format!(
+                    "Unclosed delimiter {}",
+                    delimiter.fg(Color::Yellow)
+                ))
+                .with_label(
+                    Label::new(span.clone())
+                        .with_message(format!(
+                            "Unclosed delimiter {}",
+                            delimiter.fg(Color::Yellow)
+                        ))
+                        .with_color(Color::Yellow),
+                )
+                .with_label(
+                    Label::new(e.span())
+                        .with_message(format!(
+                            "Must be closed before this {}",
+                            e.found()
+                                .unwrap_or(&"end of file".to_string())
+                                .fg(Color::Red)
+                        ))
+                        .with_color(Color::Red),
+                ),
+            chumsky::error::SimpleReason::Unexpected => report
+                .with_message(format!(
+                    "{}, expected {}",
+                    if e.found().is_some() {
+                        "Unexpected token in input"
+                    } else {
+                        "Unexpected end of input"
+                    },
+                    if e.expected().len() == 0 {
+                        "end of input".to_string()
+                    } else {
+                        e.expected()
+                            .map(|x| x.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    }
+                ))
+                .with_label(
+                    Label::new(e.span())
+                        .with_message(format!(
+                            "Unexpected token {}",
+                            e.found()
+                                .unwrap_or(&"end of file".to_string())
+                                .fg(Color::Red)
+                        ))
+                        .with_color(Color::Red),
+                ),
+            chumsky::error::SimpleReason::Custom(msg) => report.with_message(msg).with_label(
+                Label::new(e.span())
+                    .with_message(format!("{}", msg.fg(Color::Red)))
+                    .with_color(Color::Red),
+            ),
+        };
+
+        let mut buf = vec![];
+        report.finish().write(Source::from(&src), &mut buf).unwrap();
+        reports.push(std::str::from_utf8(&buf[..]).unwrap().to_string());
+    }
+
+    reports.join("\n")
+}
+
 #[cfg(test)]
 mod tests {
     use maplit::hashmap;
@@ -113,5 +188,16 @@ mod tests {
                 }],
             },
         );
+    }
+
+    #[test]
+    fn parse_err() {
+        let parser = parser();
+        let text = "tc(x, y) :- f(.
+tc(z) :- tc(z, &).";
+        let (_, errors) = parser.parse_recovery(text);
+        assert!(errors.len() == 1);
+        let message = format_errors(text, errors);
+        assert!(message.contains("Unexpected token in input, expected )"));
     }
 }
