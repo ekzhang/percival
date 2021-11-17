@@ -8,4 +8,12 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
   },
   plugins: [svelte()],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3030",
+        changeOrigin: true,
+      },
+    },
+  },
 });
