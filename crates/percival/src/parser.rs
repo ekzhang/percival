@@ -113,7 +113,7 @@ pub fn format_errors(src: &str, errors: Vec<Simple<char>>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use maplit::hashmap;
+    use maplit::btreemap;
 
     use super::*;
 
@@ -128,7 +128,7 @@ mod tests {
                 rules: vec![Rule {
                     head: Fact {
                         name: "tc".into(),
-                        props: hashmap! {
+                        props: btreemap! {
                             "x".into() => Value::Id("x".into()),
                             "y".into() => Value::Id("y".into()),
                         },
@@ -136,14 +136,14 @@ mod tests {
                     clauses: vec![
                         Fact {
                             name: "tc".into(),
-                            props: hashmap! {
+                            props: btreemap! {
                                 "x".into() => Value::Id("x".into()),
                                 "y".into() => Value::Id("z".into()),
                             },
                         },
                         Fact {
                             name: "edge".into(),
-                            props: hashmap! {
+                            props: btreemap! {
                                 "x".into() => Value::Id("z".into()),
                                 "y".into() => Value::Id("y".into()),
                             },

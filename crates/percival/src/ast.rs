@@ -1,6 +1,6 @@
 //! Abstract syntax tree definitions for the Percival language.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A program translation unit in the Percival language.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub struct Fact {
     /// Name of the relation being referenced.
     pub name: String,
     /// Named properties of the relation.
-    pub props: HashMap<String, Value>,
+    pub props: BTreeMap<String, Value>,
 }
 
 /// A bound or unbound value assigned to part of a relation.
@@ -37,7 +37,7 @@ pub enum Value {
 
 impl Program {
     /// Returns the names of all relations produced by this program.
-    pub fn results(&self) -> HashSet<String> {
+    pub fn results(&self) -> BTreeSet<String> {
         self.rules
             .iter()
             .map(|rule| rule.head.name.clone())
@@ -45,7 +45,7 @@ impl Program {
     }
 
     /// Returns the names of all external relations that this program uses.
-    pub fn deps(&self) -> HashSet<String> {
+    pub fn deps(&self) -> BTreeSet<String> {
         let results = self.results();
         self.rules
             .iter()
