@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  rust:
+    name: Rust format, lint, and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - run: cargo fmt -- --check
+
+      - run: cargo clippy --all-targets -- -D warnings
+
+      - run: cargo test
+
+      - uses: jetli/wasm-pack-action@v0.3.0
+        with:
+          version: "latest"
+
+      - run: wasm-pack test --chrome --headless rustpad-wasm
+
+  go:
+    name: Go build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.17.2"
+
+      - run: go build main.go
+
+  app:
+    name: App format, build, and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+
+      - run: npm ci
+
+      - run: npx prettier --check .
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - uses: jetli/wasm-pack-action@v0.3.0
+        with:
+          version: "latest"
+
+      - run: wasm-pack build --target web crates/percival-wasm
+
+      - run: npm run check
+
+      - run: npm run build
+
+      - run: npm test
