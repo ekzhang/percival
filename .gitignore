@@ -4,3 +4,8 @@ target/
 .vscode/
 pkg/
 .vercel/
+
+# mocha-vite-puppeteer
+/mocha-setup.js
+/test-loader.js
+/test.html

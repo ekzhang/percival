@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
 
-  import logo from "../assets/logo.svg";
+  import logo from "@/assets/logo.svg";
   import Link from "./Link.svelte";
 
   let about = false;

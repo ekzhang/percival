@@ -5,7 +5,7 @@
   import FaChevronRight from "svelte-icons/fa/FaChevronRight.svelte";
   import FaTrashAlt from "svelte-icons/fa/FaTrashAlt.svelte";
 
-  import type { CellData } from "../../lib/notebook";
+  import type { CellData } from "@/lib/notebook";
   import CellInput from "./CellInput.svelte";
   import CellOutput from "./CellOutput.svelte";
 

@@ -50,8 +50,7 @@ npm run check
 npm run format
 ```
 
-For the Rust crates, you can run automated tests for the core functionality
-with:
+For the Rust crates, you can run unit tests for the core functionality with:
 
 ```shell
 cargo test
@@ -62,4 +61,12 @@ Firefox browser:
 
 ```shell
 wasm-pack test --chrome --headless rustpad-wasm
+```
+
+Since Percival uses a Rust-based compiler but outputs JavaScript, the easiest
+way to test code generation functionality is within the browser. We use Mocha
+and Puppeteer for this, and tests can be run with:
+
+```shell
+npm test
 ```

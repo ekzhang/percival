@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CellData, NotebookState } from "../lib/notebook";
+  import { CellData, NotebookState } from "@/lib/notebook";
   import Cell from "./cell/Cell.svelte";
   import CellDivider from "./cell/CellDivider.svelte";
 

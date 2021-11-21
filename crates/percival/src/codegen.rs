@@ -192,7 +192,7 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
                         "
 {v} = {v}.withMutations({v} => {{
     for (let obj of {deps}.{name}) {{
-        {v}.update({imm}.Map({{{bound_contents}}}), value => {{
+        {v}.update({imm}.Map({bindings}), value => {{
             if (value === undefined) value = [];
             value.push({imm}.Map(obj));
             return value;
@@ -203,8 +203,7 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
                         deps = VAR_DEPS,
                         imm = VAR_IMMUTABLE,
                         name = index.name,
-                        bound_contents =
-                            cmp_object(&index.bound, |field| Ok(format!("obj.{}", field)))?,
+                        bindings = cmp_object(&index.bound, |field| Ok(format!("obj.{}", field)))?,
                     );
                     decls.push(init_index.trim().into());
                 }
@@ -223,7 +222,7 @@ fn cmp_main_loop(ctx: &Context, prog: &Program) -> Result<String> {
     let set_update_to_new = cmp_set_update_to_new(&ctx, prog)?;
     let main_loop = format!(
         "
-let {first_iter} = false;
+let {first_iter} = true;
 while ({first_iter} || !({no_updates})) {{
     {updates}
     {new_decls}
@@ -289,7 +288,7 @@ for (const obj of {upd}) {{
                     v = js_name,
                     upd = upd_name,
                     ind_upd = ind_upd_name,
-                    key = cmp_object(&index.bound, |field| Ok(format!("obj.{}", field)))?,
+                    key = cmp_object(&index.bound, |field| Ok(format!("obj.get({})", field)))?,
                 );
                 updates.push(code.trim().into());
             }
@@ -361,7 +360,7 @@ fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
             match value {
                 Value::Id(id) => {
                     let name = ctx.gensym(id);
-                    setters.push(format!("let {} = obj.{};", name, key));
+                    setters.push(format!("let {} = obj.get({});", name, key));
                     *ctx = ctx.add(VarId::Var(id.clone()), name);
                 }
                 Value::Literal(_) => unreachable!("literal values are always bound"),

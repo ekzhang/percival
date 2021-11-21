@@ -10,7 +10,7 @@
   import AnsiUp from "ansi_up";
   import { compile } from "percival-wasm";
 
-  import type { CellData } from "src/lib/notebook";
+  import type { CellData } from "@/lib/notebook";
 
   export let data: CellData;
 

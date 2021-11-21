@@ -5,7 +5,7 @@
   import { markdown } from "@codemirror/lang-markdown";
   import { createEventDispatcher, onMount } from "svelte";
 
-  import type { CellData } from "../../lib/notebook";
+  import type { CellData } from "@/lib/notebook";
 
   const dispatch = createEventDispatcher();
 
