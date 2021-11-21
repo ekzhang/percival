@@ -13,7 +13,7 @@ pub struct Program {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rule {
     /// Head or implicand of the Horn clause.
-    pub head: Fact,
+    pub goal: Fact,
     /// Tail or conditional assumptions of the Horn clause.
     pub clauses: Vec<Fact>,
 }
@@ -40,7 +40,7 @@ impl Program {
     pub fn results(&self) -> BTreeSet<String> {
         self.rules
             .iter()
-            .map(|rule| rule.head.name.clone())
+            .map(|rule| rule.goal.name.clone())
             .collect()
     }
 

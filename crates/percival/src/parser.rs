@@ -28,7 +28,7 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .then_ignore(seq(":-".chars()).padded())
         .then(fact.padded().separated_by(just(',')))
         .then_ignore(just('.'))
-        .map(|(head, clauses)| Rule { head, clauses })
+        .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
 
     rule.padded()
@@ -126,7 +126,7 @@ mod tests {
             result.unwrap(),
             Program {
                 rules: vec![Rule {
-                    head: Fact {
+                    goal: Fact {
                         name: "tc".into(),
                         props: btreemap! {
                             "x".into() => Value::Id("x".into()),

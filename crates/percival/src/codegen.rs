@@ -1,17 +1,33 @@
 //! JavaScript dynamic code generation facilities for Percival.
 
-use std::collections::BTreeSet;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Display,
+};
 
 use rpds::RedBlackTreeMap;
+use thiserror::Error;
 
-use crate::ast::{Program, Rule, Value};
+use crate::ast::{Fact, Program, Rule, Value};
+
+/// An error during code generation.
+#[derive(Error, Debug)]
+pub enum Error {
+    /// A given variable was not found in context.
+    #[error("could not find definition for `{0:?}` in context")]
+    UndefVar(VarId),
+}
+
+/// Result returned by the compiler.
+pub type Result<T> = std::result::Result<T, Error>;
 
 const VAR_DEPS: &str = "__percival_deps";
 const VAR_IMMUTABLE: &str = "__percival_immutable";
 const VAR_FIRST_ITERATION: &str = "__percival_first_iteration";
 
+/// An index created on a subset of relation fields.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Index {
+pub struct Index {
     /// Name of the relation being indexed.
     name: String,
 
@@ -21,7 +37,7 @@ struct Index {
 
 /// Abstract identifier for variables stored in JavaScript objects.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum VarId {
+pub enum VarId {
     /// Active sets of current relations.
     Set(String),
 
@@ -64,8 +80,11 @@ impl Context {
     }
 
     /// Get an entry of the map.
-    fn get(&self, key: &VarId) -> Option<String> {
-        self.map.get(key).map(String::clone)
+    fn get(&self, key: &VarId) -> Result<String> {
+        self.map
+            .get(key)
+            .map(String::clone)
+            .ok_or_else(|| Error::UndefVar(key.clone()))
     }
 
     /// Add a new entry to the map, returning a new map.
@@ -78,17 +97,24 @@ impl Context {
             counter: self.counter,
         }
     }
+
+    /// Check is a fact value is bound or free, given the current context.
+    fn is_bound(&self, value: &Value) -> bool {
+        match value {
+            Value::Id(id) => self.map.contains_key(&VarId::Var(id.clone())),
+        }
+    }
 }
 
 /// Generates a JavaScript function body that evaluates the program.
-pub fn compile(prog: &Program) -> String {
+pub fn compile(prog: &Program) -> Result<String> {
     let ctx = make_global_context(prog);
     let code = [
-        cmp_decls(&ctx, prog),
-        cmp_main_loop(&ctx, prog),
-        cmp_output(&ctx, prog),
+        cmp_decls(&ctx, prog)?,
+        cmp_main_loop(&ctx, prog)?,
+        cmp_output(&ctx, prog)?,
     ];
-    code.join("\n")
+    Ok(code.join("\n"))
 }
 
 fn make_global_context(prog: &Program) -> Context {
@@ -103,7 +129,7 @@ fn make_global_context(prog: &Program) -> Context {
     }
 
     let results = prog.results();
-    for index in make_indices(&prog) {
+    for index in make_indices(prog) {
         let index_name = ctx.gensym(&format!("{}_index", index.name));
         ctx = ctx.add(VarId::Index(index.clone()), index_name);
         if results.contains(&index.name) {
@@ -146,7 +172,7 @@ fn make_indices(prog: &Program) -> BTreeSet<Index> {
         .collect()
 }
 
-fn cmp_decls(ctx: &Context, prog: &Program) -> String {
+fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
     let mut decls = Vec::new();
     let deps = prog.deps();
     for (id, js_name) in ctx.map.iter() {
@@ -173,12 +199,8 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> String {
                         deps = VAR_DEPS,
                         imm = VAR_IMMUTABLE,
                         name = index.name,
-                        bound_contents = index
-                            .bound
-                            .iter()
-                            .map(|field| format!("{f}: obj.{f}", f = field))
-                            .collect::<Vec<_>>()
-                            .join(", "),
+                        bound_contents =
+                            cmp_object(&index.bound, |field| Ok(format!("obj.{}", field)))?,
                     );
                     decls.push(init_index.trim().into());
                 }
@@ -186,15 +208,15 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> String {
             _ => (),
         }
     }
-    decls.join("\n")
+    Ok(decls.join("\n"))
 }
 
-fn cmp_main_loop(ctx: &Context, prog: &Program) -> String {
+fn cmp_main_loop(ctx: &Context, prog: &Program) -> Result<String> {
     let results = prog.results();
-    let updates = cmp_updates(ctx, prog);
+    let updates = cmp_updates(ctx, prog)?;
     let (ctx, new_decls) = cmp_new_decls(ctx, prog);
-    let rules = "cmp_rules(&ctx, prog)";
-    let set_update_to_new = "cmp_set_update_to_new(&ctx, prog)";
+    let rules = cmp_rules(&ctx, prog)?;
+    let set_update_to_new = cmp_set_update_to_new(&ctx, prog)?;
     let main_loop = format!(
         "
 let {first_iter} = false;
@@ -213,7 +235,7 @@ while ({first_iter} || !({no_updates})) {{
                 ctx.get(&VarId::Update(name.into()))
                     .expect("could not find name in main loop no_updates")
             ))
-            .collect::<Vec<_>>()
+            .collect::<Box<_>>()
             .join("")
             + "true",
         updates = updates,
@@ -221,10 +243,10 @@ while ({first_iter} || !({no_updates})) {{
         rules = rules,
         set_update_to_new = set_update_to_new,
     );
-    main_loop.trim().into()
+    Ok(main_loop.trim().into())
 }
 
-fn cmp_updates(ctx: &Context, prog: &Program) -> String {
+fn cmp_updates(ctx: &Context, prog: &Program) -> Result<String> {
     let mut updates = Vec::new();
     let results = prog.results();
     for (id, js_name) in &ctx.map {
@@ -233,12 +255,12 @@ fn cmp_updates(ctx: &Context, prog: &Program) -> String {
                 updates.push(format!(
                     "{v} = {v}.merge({upd});",
                     v = js_name,
-                    upd = ctx.get(&VarId::Update(name.into())).unwrap(),
+                    upd = ctx.get(&VarId::Update(name.into()))?,
                 ));
             }
             VarId::Index(index) if results.contains(&index.name) => {
-                let upd_name = ctx.get(&VarId::Update(index.name.clone())).unwrap();
-                let ind_upd_name = ctx.get(&VarId::IndexUpdate(index.clone())).unwrap();
+                let upd_name = ctx.get(&VarId::Update(index.name.clone()))?;
+                let ind_upd_name = ctx.get(&VarId::IndexUpdate(index.clone()))?;
                 let code = format!(
                     "
 {v} = {v}.asMutable();
@@ -269,7 +291,7 @@ for (const obj of {upd}) {{
             _ => (),
         }
     }
-    updates.join("\n")
+    Ok(updates.join("\n"))
 }
 
 fn cmp_new_decls(ctx: &Context, prog: &Program) -> (Context, String) {
@@ -277,24 +299,145 @@ fn cmp_new_decls(ctx: &Context, prog: &Program) -> (Context, String) {
     let mut decls = Vec::new();
     for result in prog.results() {
         let name = ctx.gensym(&format!("{}_new", result));
-        decls.push(format!("let {} = Immutable.Set().asMutable();", name));
+        decls.push(format!(
+            "let {} = {}.Set().asMutable();",
+            name, VAR_IMMUTABLE,
+        ));
         ctx = ctx.add(VarId::New(result), name);
     }
     (ctx, decls.join("\n"))
 }
 
-fn cmp_output(ctx: &Context, prog: &Program) -> String {
-    let fields: Vec<_> = prog
+fn cmp_rules(ctx: &Context, prog: &Program) -> Result<String> {
+    Ok(prog
+        .rules
+        .iter()
+        .map(|rule| cmp_rule(ctx, rule))
+        .collect::<Result<Box<_>>>()?
+        .join("\n"))
+}
+
+fn cmp_rule(ctx: &Context, rule: &Rule) -> Result<String> {
+    let mut ctx = ctx.clone();
+
+    let mut clauses = Vec::new();
+    for clause in &rule.clauses {
+        clauses.push(cmp_clause(&mut ctx, clause)?);
+    }
+
+    let goal = format!(
+        "
+let goal = {imm}.Map({goal});
+if (!{set}.includes(goal)) {new}.add(goal);
+",
+        imm = VAR_IMMUTABLE,
+        goal = cmp_fields(&ctx, &rule.goal.props)?,
+        set = ctx.get(&VarId::Set(rule.goal.name.clone())).unwrap(),
+        new = ctx.get(&VarId::New(rule.goal.name.clone())).unwrap(),
+    );
+
+    let mut code = String::from("{\n");
+    for clause in &clauses {
+        code += clause;
+        code += "\n";
+    }
+    code += goal.trim();
+    code += &"\n}".repeat(clauses.len() + 1);
+    Ok(code)
+}
+
+fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
+    let mut bound_fields = BTreeMap::new();
+    let mut setters = Vec::new();
+    for (key, value) in &clause.props {
+        if ctx.is_bound(value) {
+            bound_fields.insert(key.clone(), value.clone());
+        } else {
+            match value {
+                Value::Id(id) => {
+                    let name = ctx.gensym(id);
+                    setters.push(format!("let {} = obj.{};", name, key));
+                    *ctx = ctx.add(VarId::Var(id.clone()), name);
+                }
+            }
+        }
+    }
+
+    if bound_fields.is_empty() {
+        // No bound fields, just iterate over the set.
+        let code = format!(
+            "
+for (const obj of {set}) {{
+    {setters}
+",
+            set = ctx
+                .get(&VarId::Set(clause.name.clone()))
+                .unwrap_or_else(|_| format!("{}.{}", VAR_DEPS, clause.name)),
+            setters = setters.join("\n"),
+        );
+        Ok(code.trim().into())
+    } else {
+        // At least one field is bound, so we use an index instead.
+        let index = Index {
+            name: clause.name.clone(),
+            bound: bound_fields.keys().cloned().collect(),
+        };
+        let code = format!(
+            "
+for (const obj of {index}.get({imm}.Map({bindings})) ?? []) {{
+    {setters}
+",
+            imm = VAR_IMMUTABLE,
+            index = ctx.get(&VarId::Index(index))?,
+            bindings = cmp_fields(ctx, &bound_fields)?,
+            setters = setters.join("\n"),
+        );
+        Ok(code.trim().into())
+    }
+}
+
+fn cmp_fields(ctx: &Context, props: &BTreeMap<String, Value>) -> Result<String> {
+    cmp_object(props.keys(), |key| {
+        let value = props.get(key).unwrap();
+        cmp_value(ctx, value)
+    })
+}
+
+fn cmp_value(ctx: &Context, value: &Value) -> Result<String> {
+    Ok(match value {
+        Value::Id(id) => ctx.get(&VarId::Var(id.clone()))?,
+    })
+}
+
+fn cmp_set_update_to_new(ctx: &Context, prog: &Program) -> Result<String> {
+    let setters = prog
         .results()
         .into_iter()
         .map(|name| {
-            format!(
-                "{}: {}.toJS()",
-                name,
-                ctx.get(&VarId::Set(name.clone()))
-                    .expect("output result set not found in context")
-            )
+            Ok(format!(
+                "{} = {}.asImmutable();",
+                ctx.get(&VarId::Update(name.clone()))?,
+                ctx.get(&VarId::New(name))?,
+            ))
         })
-        .collect();
-    format!("return {{{}}};", fields.join(", "))
+        .collect::<Result<Box<_>>>()?;
+    Ok(setters.join("\n"))
+}
+
+fn cmp_output(ctx: &Context, prog: &Program) -> Result<String> {
+    let obj = cmp_object(&prog.results(), |name| {
+        Ok(format!("{}.toJS()", ctx.get(&VarId::Set(name.clone()))?))
+    })?;
+    Ok(format!("return {};", obj))
+}
+
+fn cmp_object<T: Copy + Display, U: Display>(
+    fields: impl IntoIterator<Item = T>,
+    value_fn: impl Fn(T) -> Result<U>,
+) -> Result<String> {
+    let fields = fields
+        .into_iter()
+        .map(|field| value_fn(field).map(|value| format!("{}: {}", field, value)))
+        .collect::<Result<Box<_>>>()?;
+    Ok(format!("{{{}}}", fields.join(", ")))
 }
