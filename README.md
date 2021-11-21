@@ -60,7 +60,7 @@ You can also run tests for the WebAssembly component using a headless Chrome or
 Firefox browser:
 
 ```shell
-wasm-pack test --chrome --headless rustpad-wasm
+wasm-pack test --chrome --headless crates/percival-wasm
 ```
 
 Since Percival uses a Rust-based compiler but outputs JavaScript, the easiest
