@@ -270,7 +270,7 @@ fn cmp_updates(ctx: &Context, prog: &Program) -> Result<String> {
 {v} = {v}.asMutable();
 let {ind_upd} = {imm}.Map().asMutable();
 for (const obj of {upd}) {{
-    const key = {imm}.Map(...TODO...);
+    const key = {imm}.Map({key});
     {v}.update(key, value => {{
         if (value === undefined) value = [];
         value.push(obj);
@@ -289,6 +289,7 @@ for (const obj of {upd}) {{
                     v = js_name,
                     upd = upd_name,
                     ind_upd = ind_upd_name,
+                    key = cmp_object(&index.bound, |field| Ok(format!("obj.{}", field)))?,
                 );
                 updates.push(code.trim().into());
             }
