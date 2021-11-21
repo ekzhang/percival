@@ -32,7 +32,18 @@ pub struct Fact {
 pub enum Value {
     /// A simple identifier, which can be either bound or unbound.
     Id(String),
+    /// A literal value, translated directly to JavaScript.
+    Literal(Literal),
     // TODO: Expr(Expr),
+}
+
+/// Literal values supported by the Percival grammar.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Literal {
+    /// A standard floating-point number literal.
+    Number(String),
+    /// A string literal, with escape sequences unevaluated.
+    String(String),
 }
 
 impl Program {

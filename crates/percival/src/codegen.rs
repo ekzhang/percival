@@ -8,7 +8,7 @@ use std::{
 use rpds::RedBlackTreeMap;
 use thiserror::Error;
 
-use crate::ast::{Fact, Program, Rule, Value};
+use crate::ast::{Fact, Literal, Program, Rule, Value};
 
 /// An error during code generation.
 #[derive(Error, Debug)]
@@ -102,6 +102,7 @@ impl Context {
     fn is_bound(&self, value: &Value) -> bool {
         match value {
             Value::Id(id) => self.map.contains_key(&VarId::Var(id.clone())),
+            Value::Literal(_) => true,
         }
     }
 }
@@ -157,6 +158,9 @@ fn make_indices(prog: &Program) -> BTreeSet<Index> {
                             } else {
                                 vars.insert(id);
                             }
+                        }
+                        Value::Literal(_) => {
+                            bound.insert(key.to_owned());
                         }
                     }
                 }
@@ -359,6 +363,7 @@ fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
                     setters.push(format!("let {} = obj.{};", name, key));
                     *ctx = ctx.add(VarId::Var(id.clone()), name);
                 }
+                Value::Literal(_) => unreachable!("literal values are always bound"),
             }
         }
     }
@@ -406,6 +411,8 @@ fn cmp_fields(ctx: &Context, props: &BTreeMap<String, Value>) -> Result<String> 
 fn cmp_value(ctx: &Context, value: &Value) -> Result<String> {
     Ok(match value {
         Value::Id(id) => ctx.get(&VarId::Var(id.clone()))?,
+        Value::Literal(Literal::Number(n)) => n.clone(),
+        Value::Literal(Literal::String(s)) => format!("\"{}\"", s),
     })
 }
 
