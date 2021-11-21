@@ -12,6 +12,7 @@ function checkProgram({
   output: Record<string, object[]>;
 }) {
   const result = build(src);
+  expect(result.errors).to.be.undefined;
   expect(result.evaluate).not.to.be.undefined;
   const observed = result.evaluate(input);
   expect(observed).to.have.keys(...Object.keys(output));

@@ -121,6 +121,11 @@ pub fn compile(prog: &Program) -> Result<String> {
 fn make_global_context(prog: &Program) -> Context {
     let mut ctx = Context::new();
 
+    for name in prog.deps() {
+        let set_name = ctx.gensym(&name);
+        ctx = ctx.add(VarId::Set(name.clone()), set_name);
+    }
+
     for name in prog.results() {
         let set_name = ctx.gensym(&name);
         let update_name = ctx.gensym(&format!("{}_update", name));
@@ -181,8 +186,25 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
     let deps = prog.deps();
     for (id, js_name) in ctx.map.iter() {
         match id {
-            VarId::Set(_) | VarId::Update(_) => {
+            VarId::Set(name) | VarId::Update(name) => {
                 decls.push(format!("let {} = {}.Set();", js_name, VAR_IMMUTABLE));
+                if deps.contains(name) {
+                    // Initialize sets - need to move to Immutable.Map objects.
+                    let init_set = format!(
+                        "
+{v} = {v}.withMutations({v} => {{
+    for (const obj of {deps}.{name}) {{
+        {v}.add({imm}.Map(obj));
+    }}
+}});
+",
+                        v = js_name,
+                        deps = VAR_DEPS,
+                        imm = VAR_IMMUTABLE,
+                        name = name,
+                    );
+                    decls.push(init_set.trim().into());
+                }
             }
             VarId::Index(index) => {
                 decls.push(format!("let {} = {}.Map();", js_name, VAR_IMMUTABLE));
@@ -191,7 +213,7 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
                     let init_index = format!(
                         "
 {v} = {v}.withMutations({v} => {{
-    for (let obj of {deps}.{name}) {{
+    for (const obj of {deps}.{name}) {{
         {v}.update({imm}.Map({bindings}), value => {{
             if (value === undefined) value = [];
             value.push({imm}.Map(obj));
@@ -254,11 +276,11 @@ fn cmp_updates(ctx: &Context, prog: &Program) -> Result<String> {
     let results = prog.results();
     for (id, js_name) in &ctx.map {
         match id {
-            VarId::Set(name) => {
+            VarId::Update(name) => {
                 updates.push(format!(
                     "{v} = {v}.merge({upd});",
-                    v = js_name,
-                    upd = ctx.get(&VarId::Update(name.into()))?,
+                    v = ctx.get(&VarId::Set(name.into()))?,
+                    upd = js_name,
                 ));
             }
             VarId::Index(index) if results.contains(&index.name) => {
@@ -375,9 +397,7 @@ fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
 for (const obj of {set}) {{
     {setters}
 ",
-            set = ctx
-                .get(&VarId::Set(clause.name.clone()))
-                .unwrap_or_else(|_| format!("{}.{}", VAR_DEPS, clause.name)),
+            set = ctx.get(&VarId::Set(clause.name.clone()))?,
             setters = setters.join("\n"),
         );
         Ok(code.trim().into())
