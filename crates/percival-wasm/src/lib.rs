@@ -42,13 +42,23 @@ pub struct CompilerResult(Result<String, String>);
 
 #[wasm_bindgen]
 impl CompilerResult {
+    /// Returns the compiled JavaScript program.
+    pub fn ok(&self) -> Option<String> {
+        self.0.as_ref().ok().cloned()
+    }
+
     /// Returns a string representation of any errors during compilation.
     pub fn err(&self) -> Option<String> {
         self.0.as_ref().err().cloned()
     }
 
-    /// Returns the compiled JavaScript program.
-    pub fn ok(&self) -> Option<String> {
-        self.0.as_ref().ok().cloned()
+    /// Returns `true` if the result is `Ok`.
+    pub fn is_ok(&self) -> bool {
+        self.0.is_ok()
+    }
+
+    /// Returns `true` if the result is `Err`.
+    pub fn is_err(&self) -> bool {
+        self.0.is_err()
     }
 }

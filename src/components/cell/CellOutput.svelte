@@ -5,10 +5,20 @@
   import remarkRehype from "remark-rehype";
   import rehypeKatex from "rehype-katex";
   import rehypeStringify from "rehype-stringify";
+  import prettier from "prettier";
+  import parserBabel from "prettier/parser-babel";
+  import AnsiUp from "ansi_up";
+  import { compile } from "percival-wasm";
 
   import type { CellData } from "src/lib/notebook";
 
   export let data: CellData;
+
+  function prettify(code: string): string {
+    return prettier.format(code, { parser: "babel", plugins: [parserBabel] });
+  }
+
+  const ansi_up = new AnsiUp();
 
   const pipeline = unified()
     .use(remarkParse)
@@ -19,17 +29,29 @@
 
   $: rendered =
     data.type === "markdown" ? pipeline.processSync(data.value) : null;
+
+  $: compiled = data.type === "code" ? compile(data.value) : null;
 </script>
 
 {#if data.type === "markdown"}
   <div class="markdown-output">
     {@html rendered}
   </div>
+{:else if compiled.is_ok()}
+  <pre class="output">{prettify(compiled.ok())}</pre>
 {:else}
-  <pre class="p-4">{data.value}</pre>
+  <pre class="error">{@html ansi_up.ansi_to_html(compiled.err())}</pre>
 {/if}
 
 <style lang="postcss">
+  .output {
+    @apply mb-1 p-3 rounded-sm bg-green-100 border border-green-300 max-h-64 overflow-y-auto;
+  }
+
+  .error {
+    @apply mb-1 p-3 rounded-sm bg-pink-100 border border-pink-300;
+  }
+
   .markdown-output {
     @apply px-2.5 font-serif text-base max-w-2xl leading-snug;
   }

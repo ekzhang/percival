@@ -5,7 +5,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 export default defineConfig({
   build: {
     target: "esnext",
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 2500,
   },
   plugins: [svelte()],
   server: {

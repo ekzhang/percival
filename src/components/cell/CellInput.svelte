@@ -57,7 +57,7 @@
 
 <div bind:this={editorParent} class:dirty={data.value !== currentValue} />
 
-<style>
+<style lang="postcss">
   .dirty :global(.cm-editor .cm-scroller) {
     @apply border-orange-200;
   }
