@@ -12,7 +12,7 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
     let number = {
         // We only support decimal literals for now, not the full scope of numbers.
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#numeric_literals
-        let digit = filter(|&c: &char| '0' <= c && c <= '9');
+        let digit = filter(|c: &char| ('0'..='9').contains(c));
         let digits = digit.then_ignore(just('_').or_not()).repeated().at_least(1);
         let sign = just('-')
             .or(just('+'))
