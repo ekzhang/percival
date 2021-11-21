@@ -2,6 +2,24 @@ import { expect } from "chai";
 import init from "percival-wasm";
 import { build } from "./runtime";
 
+function checkProgram({
+  src,
+  input,
+  output,
+}: {
+  src: string;
+  input: Record<string, object[]>;
+  output: Record<string, object[]>;
+}) {
+  const result = build(src);
+  expect(result.evaluate).not.to.be.undefined;
+  const observed = result.evaluate(input);
+  expect(observed).to.have.keys(...Object.keys(output));
+  for (const key of Object.keys(output)) {
+    expect(observed[key]).to.have.deep.members(output[key]);
+  }
+}
+
 describe("compilation tests", () => {
   it("can build code", async () => {
     await init();
@@ -16,25 +34,50 @@ describe("compilation tests", () => {
     expect(result.evaluate({})).to.be.deep.equal({ tc: [{ x: 3 }] });
   });
 
-  it("evaluates transitive closure", async () => {
+  it("evaluates transitive closure from input", async () => {
     await init();
-    const src = `
+    checkProgram({
+      src: `
 tc(x, y) :- edge(x, y).
 tc(x, y) :- tc(x, y: z), edge(x: z, y).
-`;
-    const result = build(src);
-    expect(result.evaluate).not.to.be.undefined;
-    const output = result.evaluate({
-      edge: [
-        { x: 2, y: 3 },
-        { x: 3, y: 4 },
-      ],
+`,
+      input: {
+        edge: [
+          { x: 2, y: 3 },
+          { x: 3, y: 4 },
+        ],
+      },
+      output: {
+        tc: [
+          { x: 2, y: 3 },
+          { x: 2, y: 4 },
+          { x: 3, y: 4 },
+        ],
+      },
     });
-    expect(output).to.have.keys("tc");
-    expect(output.tc).to.have.deep.members([
-      { x: 2, y: 3 },
-      { x: 2, y: 4 },
-      { x: 3, y: 4 },
-    ]);
+  });
+
+  it("evaluates transitive closure inline", async () => {
+    await init();
+    checkProgram({
+      src: `
+edge(x: "foo", y: "bar").
+edge(x: "bar", y: "baz").
+tc(x, y) :- edge(x, y).
+tc(x, y) :- tc(x, y: z), edge(x: z, y).
+`,
+      input: {},
+      output: {
+        edge: [
+          { x: "foo", y: "bar" },
+          { x: "bar", y: "baz" },
+        ],
+        tc: [
+          { x: "foo", y: "bar" },
+          { x: "foo", y: "baz" },
+          { x: "bar", y: "baz" },
+        ],
+      },
+    });
   });
 });

@@ -288,7 +288,7 @@ for (const obj of {upd}) {{
                     v = js_name,
                     upd = upd_name,
                     ind_upd = ind_upd_name,
-                    key = cmp_object(&index.bound, |field| Ok(format!("obj.get({})", field)))?,
+                    key = cmp_object(&index.bound, |field| Ok(format!("obj.get('{}')", field)))?,
                 );
                 updates.push(code.trim().into());
             }
@@ -360,7 +360,7 @@ fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
             match value {
                 Value::Id(id) => {
                     let name = ctx.gensym(id);
-                    setters.push(format!("let {} = obj.get({});", name, key));
+                    setters.push(format!("let {} = obj.get('{}');", name, key));
                     *ctx = ctx.add(VarId::Var(id.clone()), name);
                 }
                 Value::Literal(_) => unreachable!("literal values are always bound"),
