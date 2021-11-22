@@ -9,6 +9,20 @@ use crate::ast::{Clause, Fact, Literal, Program, Rule, Value};
 pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
     let id = text::ident().labelled("ident");
 
+    let comments = {
+        let single_line = just('/')
+            .then_ignore(just('/'))
+            .then_ignore(take_until(text::newline()));
+        let multi_line = just('/')
+            .then_ignore(just('*'))
+            .then_ignore(take_until(just('*').then(just('/'))));
+        single_line
+            .or(multi_line)
+            .padded()
+            .repeated()
+            .map_err(|e: Simple<char>| Simple::custom(e.span(), "Not a valid comment"))
+    };
+
     let number = {
         // We only support decimal literals for now, not the full scope of numbers.
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#numeric_literals
@@ -73,7 +87,13 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .labelled("value");
 
     let prop = id
-        .then(just(':').padded().ignore_then(value).or_not())
+        .then(
+            just(':')
+                .padded()
+                .padded_by(comments)
+                .ignore_then(value)
+                .or_not(),
+        )
         .try_map(|(id, value), span| {
             let value = value.unwrap_or_else(|| Value::Id(id.clone()));
             match &value {
@@ -87,12 +107,18 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .labelled("prop");
 
     let fact = text::ident()
-        .then(prop.padded().separated_by(just(',')).delimited_by('(', ')'))
+        .then(
+            prop.padded()
+                .padded_by(comments)
+                .separated_by(just(','))
+                .delimited_by('(', ')'),
+        )
         .map(|(name, props)| Fact {
             name,
             props: props.into_iter().collect(),
         })
-        .labelled("fact");
+        .labelled("fact")
+        .boxed(); // boxed to avoid rustc recursion limit
 
     let clause = fact
         .clone()
@@ -104,7 +130,8 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .then(
             seq(":-".chars())
                 .padded()
-                .ignore_then(clause.padded().separated_by(just(',')))
+                .padded_by(comments)
+                .ignore_then(clause.padded().padded_by(comments).separated_by(just(',')))
                 .then_ignore(just('.'))
                 .try_map(|clauses, span| {
                     if clauses.is_empty() {
@@ -113,12 +140,13 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
                         Ok(clauses)
                     }
                 })
-                .or(just('.').padded().map(|_| Vec::new())),
+                .or(just('.').padded().padded_by(comments).map(|_| Vec::new())),
         )
         .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
 
     rule.padded()
+        .padded_by(comments)
         .repeated()
         .map(|rules| Program { rules })
         .then_ignore(end())
@@ -348,5 +376,20 @@ tc(z) :- tc(z, &).";
                 }],
             },
         );
+    }
+
+    #[test]
+    fn parse_comments() {
+        let parser = parser();
+        let result = parser.parse(
+            "
+hello(x: /* asdf */ 3) :-
+    // a comment!
+    world(k) /* another comment */,
+    `k < 10`.
+"
+            .trim(),
+        );
+        assert!(result.is_ok());
     }
 }
