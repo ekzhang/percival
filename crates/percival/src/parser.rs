@@ -12,17 +12,17 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
     let number = {
         // We only support decimal literals for now, not the full scope of numbers.
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#numeric_literals
-        let digit = filter(|c: &char| ('0'..='9').contains(c));
+        let digit = one_of('0'..='9');
         let digits = digit.then_ignore(just('_').or_not()).repeated().at_least(1);
         let sign = just('-')
             .or(just('+'))
             .map(|c| c.to_string())
             .or_not()
             .map(Option::unwrap_or_default);
-        let integer = sign.chain(digits);
+        let integer = sign.chain(digits.clone());
 
         let fraction = just('.')
-            .chain(digits)
+            .chain(digits.clone())
             .or_not()
             .map(Option::unwrap_or_default);
         let exponent = just('e')
@@ -42,7 +42,7 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         let hex_digit = filter(|&c: &char| c.is_ascii_hexdigit());
         let control_char = just('\\')
             .chain(
-                filter(|&c: &char| "\"\\/bfnrt".contains(c))
+                one_of("\"\\/bfnrt".chars())
                     .map(|c| vec![c])
                     .or(just('u').chain(hex_digit.repeated().at_least(4).at_most(4))),
             )
@@ -72,7 +72,7 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
             match &value {
                 Value::Id(id) if is_reserved_word(id) => Err(Simple::custom(
                     span,
-                    "cannot use reserved word as a variable binding",
+                    "Cannot use reserved word as a variable binding",
                 )),
                 _ => Ok((id, value)),
             }
@@ -88,6 +88,7 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .labelled("fact");
 
     let rule = fact
+        .clone()
         .then(
             seq(":-".chars())
                 .padded()
@@ -95,7 +96,7 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
                 .then_ignore(just('.'))
                 .try_map(|clauses, span| {
                     if clauses.is_empty() {
-                        Err(Simple::custom(span, "rule needs at least one clause"))
+                        Err(Simple::custom(span, "Rule needs at least one clause"))
                     } else {
                         Ok(clauses)
                     }
@@ -296,7 +297,7 @@ tc(z) :- tc(z, &).";
         let (_, errors) = parser.parse_recovery(text);
         assert!(errors.len() == 1);
         let message = format_errors(text, errors);
-        assert!(message.contains("cannot use reserved word as a variable binding"));
+        assert!(message.contains("Cannot use reserved word as a variable binding"));
 
         let text = "bad(x: __percival_first_iteration).";
         let (_, errors) = parser.parse_recovery(text);
