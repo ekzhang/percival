@@ -67,7 +67,16 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
 
     let prop = id
         .then(just(':').padded().ignore_then(value).or_not())
-        .map(|(id, value)| (id.clone(), value.unwrap_or(Value::Id(id))))
+        .try_map(|(id, value), span| {
+            let value = value.unwrap_or_else(|| Value::Id(id.clone()));
+            match &value {
+                Value::Id(id) if is_reserved_word(id) => Err(Simple::custom(
+                    span,
+                    "cannot use reserved word as a variable binding",
+                )),
+                _ => Ok((id, value)),
+            }
+        })
         .labelled("prop");
 
     let fact = text::ident()
@@ -100,6 +109,22 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .repeated()
         .map(|rules| Program { rules })
         .then_ignore(end())
+}
+
+/// Checks if something is a reserved word in JavaScript. These cannot be used
+/// as an identifier.
+///
+/// See [https://262.ecma-international.org/6.0/#sec-reserved-words].
+fn is_reserved_word(name: &str) -> bool {
+    match name {
+        "break" | "do" | "in" | "typeof" | "case" | "else" | "instanceof" | "var" | "catch"
+        | "export" | "new" | "void" | "class" | "extends" | "return" | "while" | "const"
+        | "finally" | "super" | "with" | "continue" | "for" | "switch" | "yield" | "debugger"
+        | "function" | "this" | "default" | "if" | "throw" | "delete" | "import" | "try"
+        | "enum" | "await" | "implements" | "package" | "protected" | "interface" | "private"
+        | "public" | "null" | "true" | "false" => true,
+        _ => name.starts_with("__percival"),
+    }
 }
 
 /// Format parser errors into a human-readable message.
@@ -262,5 +287,24 @@ tc(z) :- tc(z, &).";
         assert!(errors.len() == 1);
         let message = format_errors(text, errors);
         assert!(message.contains("Unexpected token in input, expected )"));
+    }
+
+    #[test]
+    fn parse_reserved_word() {
+        let parser = parser();
+        let text = "bad(x: continue).";
+        let (_, errors) = parser.parse_recovery(text);
+        assert!(errors.len() == 1);
+        let message = format_errors(text, errors);
+        assert!(message.contains("cannot use reserved word as a variable binding"));
+
+        let text = "bad(x: __percival_first_iteration).";
+        let (_, errors) = parser.parse_recovery(text);
+        assert!(errors.len() == 1);
+
+        // It is okay to use a reserved word as a field name, just not a variable.
+        let text = "ok(continue: x).";
+        let (_, errors) = parser.parse_recovery(text);
+        assert!(errors.is_empty());
     }
 }

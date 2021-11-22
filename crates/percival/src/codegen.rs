@@ -23,7 +23,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 const VAR_DEPS: &str = "__percival_deps";
 const VAR_IMMUTABLE: &str = "__percival_immutable";
+
 const VAR_FIRST_ITERATION: &str = "__percival_first_iteration";
+const VAR_OBJ: &str = "__percival_obj";
+const VAR_GOAL: &str = "__percival_goal";
 
 /// An index created on a subset of relation fields.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -193,12 +196,13 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
                     let init_set = format!(
                         "
 {v} = {v}.withMutations({v} => {{
-    for (const obj of {deps}.{name}) {{
-        {v}.add({imm}.Map(obj));
+    for (const {obj} of {deps}.{name}) {{
+        {v}.add({imm}.Map({obj}));
     }}
 }});
 ",
                         v = js_name,
+                        obj = VAR_OBJ,
                         deps = VAR_DEPS,
                         imm = VAR_IMMUTABLE,
                         name = name,
@@ -213,19 +217,22 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
                     let init_index = format!(
                         "
 {v} = {v}.withMutations({v} => {{
-    for (const obj of {deps}.{name}) {{
+    for (const {obj} of {deps}.{name}) {{
         {v}.update({imm}.Map({bindings}), value => {{
             if (value === undefined) value = [];
-            value.push({imm}.Map(obj));
+            value.push({imm}.Map({obj}));
             return value;
         }});
     }}
 }});",
                         v = js_name,
+                        obj = VAR_OBJ,
                         deps = VAR_DEPS,
                         imm = VAR_IMMUTABLE,
                         name = index.name,
-                        bindings = cmp_object(&index.bound, |field| Ok(format!("obj.{}", field)))?,
+                        bindings = cmp_object(&index.bound, |field| {
+                            Ok(format!("{}.{}", VAR_OBJ, field))
+                        })?,
                     );
                     decls.push(init_index.trim().into());
                 }
@@ -290,16 +297,16 @@ fn cmp_updates(ctx: &Context, prog: &Program) -> Result<String> {
                     "
 {v} = {v}.asMutable();
 let {ind_upd} = {imm}.Map().asMutable();
-for (const obj of {upd}) {{
+for (const {obj} of {upd}) {{
     const key = {imm}.Map({key});
     {v}.update(key, value => {{
         if (value === undefined) value = [];
-        value.push(obj);
+        value.push({obj});
         return value;
     }});
     {ind_upd}.update(key, value => {{
         if (value === undefined) value = [];
-        value.push(obj);
+        value.push({obj});
         return value;
     }});
 }}
@@ -307,10 +314,13 @@ for (const obj of {upd}) {{
 {ind_upd} = {ind_upd}.asImmutable();
 ",
                     imm = VAR_IMMUTABLE,
+                    obj = VAR_OBJ,
                     v = js_name,
                     upd = upd_name,
                     ind_upd = ind_upd_name,
-                    key = cmp_object(&index.bound, |field| Ok(format!("obj.get('{}')", field)))?,
+                    key = cmp_object(&index.bound, |field| {
+                        Ok(format!("{}.get('{}')", VAR_OBJ, field))
+                    })?,
                 );
                 updates.push(code.trim().into());
             }
@@ -353,11 +363,12 @@ fn cmp_rule(ctx: &Context, rule: &Rule) -> Result<String> {
 
     let goal = format!(
         "
-let goal = {imm}.Map({goal});
-if (!{set}.includes(goal)) {new}.add(goal);
+let {goal} = {imm}.Map({goal_obj});
+if (!{set}.includes({goal})) {new}.add({goal});
 ",
+        goal = VAR_GOAL,
         imm = VAR_IMMUTABLE,
-        goal = cmp_fields(&ctx, &rule.goal.props)?,
+        goal_obj = cmp_fields(&ctx, &rule.goal.props)?,
         set = ctx.get(&VarId::Set(rule.goal.name.clone())).unwrap(),
         new = ctx.get(&VarId::New(rule.goal.name.clone())).unwrap(),
     );
@@ -381,8 +392,9 @@ fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
         } else {
             match value {
                 Value::Id(id) => {
-                    let name = ctx.gensym(id);
-                    setters.push(format!("let {} = obj.get('{}');", name, key));
+                    // Use the same name for the variable in JavaScript.
+                    let name = id.clone();
+                    setters.push(format!("const {} = {}.get('{}');", name, VAR_OBJ, key));
                     *ctx = ctx.add(VarId::Var(id.clone()), name);
                 }
                 Value::Literal(_) => unreachable!("literal values are always bound"),
@@ -394,9 +406,10 @@ fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
         // No bound fields, just iterate over the set.
         let code = format!(
             "
-for (const obj of {set}) {{
+for (const {obj} of {set}) {{
     {setters}
 ",
+            obj = VAR_OBJ,
             set = ctx.get(&VarId::Set(clause.name.clone()))?,
             setters = setters.join("\n"),
         );
@@ -409,9 +422,10 @@ for (const obj of {set}) {{
         };
         let code = format!(
             "
-for (const obj of {index}.get({imm}.Map({bindings})) ?? []) {{
+for (const {obj} of {index}.get({imm}.Map({bindings})) ?? []) {{
     {setters}
 ",
+            obj = VAR_OBJ,
             imm = VAR_IMMUTABLE,
             index = ctx.get(&VarId::Index(index))?,
             bindings = cmp_fields(ctx, &bound_fields)?,

@@ -1,8 +1,8 @@
 # Percival
 
-Percival is a declarative _data query and visualization language_. It provides a
-reactive, web-based notebook environment for exploring complex datasets,
-producing interactive graphics, and sharing results.
+[Percival](https://percival.ink/) is a declarative _data query and visualization
+language_. It provides a reactive, web-based notebook environment for exploring
+complex datasets, producing interactive graphics, and sharing results.
 
 Percival combines the interactive beauty of
 [_Vega_](https://vega.github.io/vega/)-like visualization grammars with the
