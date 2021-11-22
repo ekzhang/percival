@@ -60,9 +60,16 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
 
     let literal = number.or(string).labelled("literal");
 
+    let expr = just('`')
+        .ignore_then(take_until(just('`')))
+        .map(|(s, _)| s)
+        .collect()
+        .labelled("expr");
+
     let value = id
         .map(Value::Id)
         .or(literal.map(Value::Literal))
+        .or(expr.map(Value::Expr))
         .labelled("value");
 
     let prop = id
@@ -307,5 +314,31 @@ tc(z) :- tc(z, &).";
         let text = "ok(continue: x).";
         let (_, errors) = parser.parse_recovery(text);
         assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn parse_js_expr() {
+        let parser = parser();
+        let result = parser.parse("ok(x: `2 * num`) :- input(x: num).");
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Program {
+                rules: vec![Rule {
+                    goal: Fact {
+                        name: "ok".into(),
+                        props: btreemap! {
+                            "x".into() => Value::Expr("2 * num".into()),
+                        },
+                    },
+                    clauses: vec![Fact {
+                        name: "input".into(),
+                        props: btreemap! {
+                            "x".into() => Value::Id("num".into()),
+                        },
+                    },],
+                }],
+            },
+        );
     }
 }

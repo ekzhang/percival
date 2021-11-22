@@ -105,7 +105,7 @@ impl Context {
     fn is_bound(&self, value: &Value) -> bool {
         match value {
             Value::Id(id) => self.map.contains_key(&VarId::Var(id.clone())),
-            Value::Literal(_) => true,
+            Value::Literal(_) | Value::Expr(_) => true,
         }
     }
 }
@@ -167,7 +167,7 @@ fn make_indices(prog: &Program) -> BTreeSet<Index> {
                                 vars.insert(id);
                             }
                         }
-                        Value::Literal(_) => {
+                        Value::Literal(_) | Value::Expr(_) => {
                             bound.insert(key.to_owned());
                         }
                     }
@@ -397,7 +397,9 @@ fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
                     setters.push(format!("const {} = {}.get('{}');", name, VAR_OBJ, key));
                     *ctx = ctx.add(VarId::Var(id.clone()), name);
                 }
-                Value::Literal(_) => unreachable!("literal values are always bound"),
+                Value::Literal(_) | Value::Expr(_) => {
+                    unreachable!("literal and expression values are always bound")
+                }
             }
         }
     }
@@ -447,6 +449,7 @@ fn cmp_value(ctx: &Context, value: &Value) -> Result<String> {
         Value::Id(id) => ctx.get(&VarId::Var(id.clone()))?,
         Value::Literal(Literal::Number(n)) => n.clone(),
         Value::Literal(Literal::String(s)) => format!("\"{}\"", s),
+        Value::Expr(e) => e.clone(),
     })
 }
 

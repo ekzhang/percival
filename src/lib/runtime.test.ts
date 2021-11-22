@@ -81,4 +81,28 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
       },
     });
   });
+
+  it("evaluates backtick expressions", async () => {
+    await init();
+    checkProgram({
+      src: `
+name(value: \`first + " " + last\`) :- person(first, last).
+`,
+      input: {
+        person: [
+          {
+            first: "eric",
+            last: "zhang",
+          },
+          {
+            first: "john",
+            last: "doe",
+          },
+        ],
+      },
+      output: {
+        name: [{ value: "eric zhang" }, { value: "john doe" }],
+      },
+    });
+  });
 });

@@ -34,7 +34,8 @@ pub enum Value {
     Id(String),
     /// A literal value, translated directly to JavaScript.
     Literal(Literal),
-    // TODO: Expr(Expr),
+    /// A raw JavaScript expression between backticks.
+    Expr(String),
 }
 
 /// Literal values supported by the Percival grammar.
