@@ -21,7 +21,7 @@ function checkProgram({
   }
 }
 
-describe("compilation tests", () => {
+describe("basic compilation", () => {
   it("can build code", async () => {
     await init();
     expect(build("tc(x: 3).").errors).to.be.undefined;
@@ -81,7 +81,9 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
       },
     });
   });
+});
 
+describe("embedded backtick expressions", () => {
   it("evaluates backtick expressions", async () => {
     await init();
     checkProgram({
@@ -102,6 +104,36 @@ name(value: \`first + " " + last\`) :- person(first, last).
       },
       output: {
         name: [{ value: "eric zhang" }, { value: "john doe" }],
+      },
+    });
+  });
+
+  it("evaluates fibonacci numbers", async () => {
+    await init();
+    checkProgram({
+      src: `
+fib(n: 0, x: 0).
+fib(n: 1, x: 1).
+fib(n: \`n + 1\`, x: \`x1 + x2\`) :-
+    fib(n, x: x1),
+    fib(n: \`n - 1\`, x: x2),
+    \`n < 10\`.
+`,
+      input: {},
+      output: {
+        fib: [
+          { n: 0, x: 0 },
+          { n: 1, x: 1 },
+          { n: 2, x: 1 },
+          { n: 3, x: 2 },
+          { n: 4, x: 3 },
+          { n: 5, x: 5 },
+          { n: 6, x: 8 },
+          { n: 7, x: 13 },
+          { n: 8, x: 21 },
+          { n: 9, x: 34 },
+          { n: 10, x: 55 },
+        ],
       },
     });
   });

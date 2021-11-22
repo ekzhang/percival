@@ -15,7 +15,16 @@ pub struct Rule {
     /// Head or implicand of the Horn clause.
     pub goal: Fact,
     /// Tail or conditional assumptions of the Horn clause.
-    pub clauses: Vec<Fact>,
+    pub clauses: Vec<Clause>,
+}
+
+/// An element of the right-hand side of a rule.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Clause {
+    /// Tail fact assumption of the rule.
+    Fact(Fact),
+    /// A raw JavaScript conditional expression between backticks.
+    Expr(String),
 }
 
 /// Literal part of a Horn clause, written in terms of relations.
@@ -62,12 +71,9 @@ impl Program {
         self.rules
             .iter()
             .flat_map(|rule| {
-                rule.clauses.iter().filter_map(|clause| {
-                    if results.contains(&clause.name) {
-                        None
-                    } else {
-                        Some(clause.name.clone())
-                    }
+                rule.clauses.iter().filter_map(|clause| match clause {
+                    Clause::Fact(fact) if !results.contains(&fact.name) => Some(fact.name.clone()),
+                    _ => None,
                 })
             })
             .collect()

@@ -8,7 +8,7 @@ use std::{
 use rpds::RedBlackTreeMap;
 use thiserror::Error;
 
-use crate::ast::{Fact, Literal, Program, Rule, Value};
+use crate::ast::{Clause, Literal, Program, Rule, Value};
 
 /// An error during code generation.
 #[derive(Error, Debug)]
@@ -157,26 +157,28 @@ fn make_indices(prog: &Program) -> BTreeSet<Index> {
             let mut vars = BTreeSet::new();
             let mut indices = BTreeSet::new();
             for clause in &rule.clauses {
-                let mut bound = BTreeSet::new();
-                for (key, value) in &clause.props {
-                    match value {
-                        Value::Id(id) => {
-                            if vars.contains(id) {
+                if let Clause::Fact(fact) = clause {
+                    let mut bound = BTreeSet::new();
+                    for (key, value) in &fact.props {
+                        match value {
+                            Value::Id(id) => {
+                                if vars.contains(id) {
+                                    bound.insert(key.to_owned());
+                                } else {
+                                    vars.insert(id);
+                                }
+                            }
+                            Value::Literal(_) | Value::Expr(_) => {
                                 bound.insert(key.to_owned());
-                            } else {
-                                vars.insert(id);
                             }
                         }
-                        Value::Literal(_) | Value::Expr(_) => {
-                            bound.insert(key.to_owned());
-                        }
                     }
-                }
-                if !bound.is_empty() {
-                    indices.insert(Index {
-                        name: clause.name.clone(),
-                        bound,
-                    });
+                    if !bound.is_empty() {
+                        indices.insert(Index {
+                            name: fact.name.clone(),
+                            bound,
+                        });
+                    }
                 }
             }
             indices
@@ -383,57 +385,63 @@ if (!{set}.includes({goal})) {new}.add({goal});
     Ok(code)
 }
 
-fn cmp_clause(ctx: &mut Context, clause: &Fact) -> Result<String> {
-    let mut bound_fields = BTreeMap::new();
-    let mut setters = Vec::new();
-    for (key, value) in &clause.props {
-        if ctx.is_bound(value) {
-            bound_fields.insert(key.clone(), value.clone());
-        } else {
-            match value {
-                Value::Id(id) => {
-                    // Use the same name for the variable in JavaScript.
-                    let name = id.clone();
-                    setters.push(format!("const {} = {}.get('{}');", name, VAR_OBJ, key));
-                    *ctx = ctx.add(VarId::Var(id.clone()), name);
-                }
-                Value::Literal(_) | Value::Expr(_) => {
-                    unreachable!("literal and expression values are always bound")
+fn cmp_clause(ctx: &mut Context, clause: &Clause) -> Result<String> {
+    match clause {
+        Clause::Fact(fact) => {
+            let mut bound_fields = BTreeMap::new();
+            let mut setters = Vec::new();
+            for (key, value) in &fact.props {
+                if ctx.is_bound(value) {
+                    bound_fields.insert(key.clone(), value.clone());
+                } else {
+                    match value {
+                        Value::Id(id) => {
+                            // Use the same name for the variable in JavaScript.
+                            let name = id.clone();
+                            setters.push(format!("const {} = {}.get('{}');", name, VAR_OBJ, key));
+                            *ctx = ctx.add(VarId::Var(id.clone()), name);
+                        }
+                        Value::Literal(_) | Value::Expr(_) => {
+                            unreachable!("literal and expression values are always bound")
+                        }
+                    }
                 }
             }
-        }
-    }
 
-    if bound_fields.is_empty() {
-        // No bound fields, just iterate over the set.
-        let code = format!(
-            "
+            if bound_fields.is_empty() {
+                // No bound fields, just iterate over the set.
+                let code = format!(
+                    "
 for (const {obj} of {set}) {{
     {setters}
 ",
-            obj = VAR_OBJ,
-            set = ctx.get(&VarId::Set(clause.name.clone()))?,
-            setters = setters.join("\n"),
-        );
-        Ok(code.trim().into())
-    } else {
-        // At least one field is bound, so we use an index instead.
-        let index = Index {
-            name: clause.name.clone(),
-            bound: bound_fields.keys().cloned().collect(),
-        };
-        let code = format!(
-            "
+                    obj = VAR_OBJ,
+                    set = ctx.get(&VarId::Set(fact.name.clone()))?,
+                    setters = setters.join("\n"),
+                );
+                Ok(code.trim().into())
+            } else {
+                // At least one field is bound, so we use an index instead.
+                let index = Index {
+                    name: fact.name.clone(),
+                    bound: bound_fields.keys().cloned().collect(),
+                };
+                let code = format!(
+                    "
 for (const {obj} of {index}.get({imm}.Map({bindings})) ?? []) {{
     {setters}
 ",
-            obj = VAR_OBJ,
-            imm = VAR_IMMUTABLE,
-            index = ctx.get(&VarId::Index(index))?,
-            bindings = cmp_fields(ctx, &bound_fields)?,
-            setters = setters.join("\n"),
-        );
-        Ok(code.trim().into())
+                    obj = VAR_OBJ,
+                    imm = VAR_IMMUTABLE,
+                    index = ctx.get(&VarId::Index(index))?,
+                    bindings = cmp_fields(ctx, &bound_fields)?,
+                    setters = setters.join("\n"),
+                );
+                Ok(code.trim().into())
+            }
+        }
+
+        Clause::Expr(expr) => Ok(format!("if ({}) {{\n", expr)),
     }
 }
 

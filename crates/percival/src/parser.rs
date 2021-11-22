@@ -3,7 +3,7 @@
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
-use crate::ast::{Fact, Literal, Program, Rule, Value};
+use crate::ast::{Clause, Fact, Literal, Program, Rule, Value};
 
 /// Constructs a parser combinator for the Percival language.
 pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
@@ -94,12 +94,17 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         })
         .labelled("fact");
 
-    let rule = fact
+    let clause = fact
         .clone()
+        .map(Clause::Fact)
+        .or(expr.map(Clause::Expr))
+        .labelled("clause");
+
+    let rule = fact
         .then(
             seq(":-".chars())
                 .padded()
-                .ignore_then(fact.padded().separated_by(just(',')))
+                .ignore_then(clause.padded().separated_by(just(',')))
                 .then_ignore(just('.'))
                 .try_map(|clauses, span| {
                     if clauses.is_empty() {
@@ -215,7 +220,7 @@ mod tests {
     use maplit::btreemap;
 
     use super::{format_errors, parser};
-    use crate::ast::{Fact, Literal, Program, Rule, Value};
+    use crate::ast::{Clause, Fact, Literal, Program, Rule, Value};
 
     #[test]
     fn parse_single_rule() {
@@ -234,20 +239,20 @@ mod tests {
                         },
                     },
                     clauses: vec![
-                        Fact {
+                        Clause::Fact(Fact {
                             name: "tc".into(),
                             props: btreemap! {
                                 "x".into() => Value::Id("x".into()),
                                 "y".into() => Value::Id("z".into()),
                             },
-                        },
-                        Fact {
+                        }),
+                        Clause::Fact(Fact {
                             name: "edge".into(),
                             props: btreemap! {
                                 "x".into() => Value::Id("z".into()),
                                 "y".into() => Value::Id("y".into()),
                             },
-                        },
+                        }),
                     ],
                 }],
             },
@@ -319,7 +324,7 @@ tc(z) :- tc(z, &).";
     #[test]
     fn parse_js_expr() {
         let parser = parser();
-        let result = parser.parse("ok(x: `2 * num`) :- input(x: num).");
+        let result = parser.parse("ok(x: `2 * num`) :- input(x: num), `num < 10`.");
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),
@@ -331,12 +336,15 @@ tc(z) :- tc(z, &).";
                             "x".into() => Value::Expr("2 * num".into()),
                         },
                     },
-                    clauses: vec![Fact {
-                        name: "input".into(),
-                        props: btreemap! {
-                            "x".into() => Value::Id("num".into()),
-                        },
-                    },],
+                    clauses: vec![
+                        Clause::Fact(Fact {
+                            name: "input".into(),
+                            props: btreemap! {
+                                "x".into() => Value::Id("num".into()),
+                            },
+                        }),
+                        Clause::Expr("num < 10".into()),
+                    ],
                 }],
             },
         );
