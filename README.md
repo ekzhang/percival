@@ -70,3 +70,8 @@ and Puppeteer for this, and tests can be run with:
 ```shell
 npm test
 ```
+
+## Acknowledgement
+
+Created by Eric Zhang ([@ekzhang1](https://twitter.com/ekzhang1)). Licensed
+under the [MIT license](LICENSE).
