@@ -72,6 +72,41 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
     });
   });
 
+  it("evaluates a bigger transitive closure", async () => {
+    await init();
+    checkProgram({
+      src: `
+tc(x, y) :- tc(x, y: z), edge(x: z, y).
+tc(x, y) :- edge(x, y).
+`,
+      deps: ["edge"],
+      results: ["tc"],
+      input: {
+        edge: [
+          { x: "hello", y: "world" },
+          { x: "world", y: "foo" },
+          { x: "foo", y: "baz" },
+          { x: "world", y: "bar" },
+          { x: "alt-src", y: "foo" },
+        ],
+      },
+      output: {
+        tc: [
+          { x: "hello", y: "world" },
+          { x: "hello", y: "foo" },
+          { x: "hello", y: "baz" },
+          { x: "hello", y: "bar" },
+          { x: "world", y: "foo" },
+          { x: "world", y: "baz" },
+          { x: "world", y: "bar" },
+          { x: "alt-src", y: "foo" },
+          { x: "alt-src", y: "baz" },
+          { x: "foo", y: "baz" },
+        ],
+      },
+    });
+  });
+
   it("evaluates transitive closure inline", async () => {
     await init();
     checkProgram({

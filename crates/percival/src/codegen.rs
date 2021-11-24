@@ -3,6 +3,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
+    rc::Rc,
 };
 
 use rpds::RedBlackTreeMap;
@@ -64,15 +65,22 @@ pub enum VarId {
 ///
 /// This is implemented using a persistent data structure, so it can be cheaply
 /// cloned to produce nested subcontexts.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct Context {
     map: RedBlackTreeMap<VarId, String>,
+    deps: Rc<BTreeSet<String>>,
+    results: Rc<BTreeSet<String>>,
     counter: u32,
 }
 
 impl Context {
-    fn new() -> Self {
-        Default::default()
+    fn new(prog: &Program) -> Self {
+        Context {
+            map: RedBlackTreeMap::new(),
+            deps: Rc::new(prog.deps()),
+            results: Rc::new(prog.results()),
+            counter: 0,
+        }
     }
 
     /// Produce a new, globally unique symbol for compilation.
@@ -97,7 +105,7 @@ impl Context {
         }
         Self {
             map: self.map.insert(key, value),
-            counter: self.counter,
+            ..self.clone()
         }
     }
 
@@ -114,34 +122,33 @@ impl Context {
 pub fn compile(prog: &Program) -> Result<String> {
     let ctx = make_global_context(prog);
     let code = [
-        cmp_decls(&ctx, prog)?,
+        cmp_decls(&ctx)?,
         cmp_main_loop(&ctx, prog)?,
-        cmp_output(&ctx, prog)?,
+        cmp_output(&ctx)?,
     ];
     Ok(code.join("\n"))
 }
 
 fn make_global_context(prog: &Program) -> Context {
-    let mut ctx = Context::new();
+    let mut ctx = Context::new(prog);
 
-    for name in prog.deps() {
-        let set_name = ctx.gensym(&name);
+    for name in Rc::clone(&ctx.deps).iter() {
+        let set_name = ctx.gensym(name);
         ctx = ctx.add(VarId::Set(name.clone()), set_name);
     }
 
-    for name in prog.results() {
-        let set_name = ctx.gensym(&name);
+    for name in Rc::clone(&ctx.results).iter() {
+        let set_name = ctx.gensym(name);
         let update_name = ctx.gensym(&format!("{}_update", name));
         ctx = ctx
             .add(VarId::Set(name.clone()), set_name)
-            .add(VarId::Update(name), update_name);
+            .add(VarId::Update(name.clone()), update_name);
     }
 
-    let results = prog.results();
     for index in make_indices(prog) {
         let index_name = ctx.gensym(&format!("{}_index", index.name));
         ctx = ctx.add(VarId::Index(index.clone()), index_name);
-        if results.contains(&index.name) {
+        if ctx.results.contains(&index.name) {
             let update_name = ctx.gensym(&format!("{}_index_update", index.name));
             ctx = ctx.add(VarId::IndexUpdate(index), update_name);
         }
@@ -186,14 +193,13 @@ fn make_indices(prog: &Program) -> BTreeSet<Index> {
         .collect()
 }
 
-fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
+fn cmp_decls(ctx: &Context) -> Result<String> {
     let mut decls = Vec::new();
-    let deps = prog.deps();
     for (id, js_name) in ctx.map.iter() {
         match id {
             VarId::Set(name) | VarId::Update(name) => {
                 decls.push(format!("let {} = {}.Set();", js_name, VAR_IMMUTABLE));
-                if deps.contains(name) {
+                if ctx.deps.contains(name) {
                     // Initialize sets - need to move to Immutable.Map objects.
                     let init_set = format!(
                         "
@@ -214,7 +220,7 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
             }
             VarId::Index(index) => {
                 decls.push(format!("let {} = {}.Map();", js_name, VAR_IMMUTABLE));
-                if deps.contains(&index.name) {
+                if ctx.deps.contains(&index.name) {
                     // Initialize index in the declarations.
                     let init_index = format!(
                         "
@@ -246,11 +252,10 @@ fn cmp_decls(ctx: &Context, prog: &Program) -> Result<String> {
 }
 
 fn cmp_main_loop(ctx: &Context, prog: &Program) -> Result<String> {
-    let results = prog.results();
-    let updates = cmp_updates(ctx, prog)?;
-    let (ctx, new_decls) = cmp_new_decls(ctx, prog);
+    let updates = cmp_updates(ctx)?;
+    let (ctx, new_decls) = cmp_new_decls(ctx);
     let rules = cmp_rules(&ctx, prog)?;
-    let set_update_to_new = cmp_set_update_to_new(&ctx, prog)?;
+    let set_update_to_new = cmp_set_update_to_new(&ctx)?;
     let main_loop = format!(
         "
 let {first_iter} = true;
@@ -262,7 +267,8 @@ while ({first_iter} || !({no_updates})) {{
     {first_iter} = false;
 }}",
         first_iter = VAR_FIRST_ITERATION,
-        no_updates = results
+        no_updates = ctx
+            .results
             .iter()
             .map(|name| format!(
                 "{}.size === 0 && ",
@@ -280,9 +286,8 @@ while ({first_iter} || !({no_updates})) {{
     Ok(main_loop.trim().into())
 }
 
-fn cmp_updates(ctx: &Context, prog: &Program) -> Result<String> {
+fn cmp_updates(ctx: &Context) -> Result<String> {
     let mut updates = Vec::new();
-    let results = prog.results();
     for (id, js_name) in &ctx.map {
         match id {
             VarId::Update(name) => {
@@ -292,7 +297,7 @@ fn cmp_updates(ctx: &Context, prog: &Program) -> Result<String> {
                     upd = js_name,
                 ));
             }
-            VarId::Index(index) if results.contains(&index.name) => {
+            VarId::Index(index) if ctx.results.contains(&index.name) => {
                 let upd_name = ctx.get(&VarId::Update(index.name.clone()))?;
                 let ind_upd_name = ctx.get(&VarId::IndexUpdate(index.clone()))?;
                 let code = format!(
@@ -332,16 +337,16 @@ for (const {obj} of {upd}) {{
     Ok(updates.join("\n"))
 }
 
-fn cmp_new_decls(ctx: &Context, prog: &Program) -> (Context, String) {
+fn cmp_new_decls(ctx: &Context) -> (Context, String) {
     let mut ctx = ctx.clone();
     let mut decls = Vec::new();
-    for result in prog.results() {
+    for result in Rc::clone(&ctx.results).iter() {
         let name = ctx.gensym(&format!("{}_new", result));
         decls.push(format!(
             "let {} = {}.Set().asMutable();",
             name, VAR_IMMUTABLE,
         ));
-        ctx = ctx.add(VarId::New(result), name);
+        ctx = ctx.add(VarId::New(result.clone()), name);
     }
     (ctx, decls.join("\n"))
 }
@@ -355,12 +360,48 @@ fn cmp_rules(ctx: &Context, prog: &Program) -> Result<String> {
         .join("\n"))
 }
 
+/// Compile a single Datalog rule into a collection of loops.
 fn cmp_rule(ctx: &Context, rule: &Rule) -> Result<String> {
+    let fact_positions: Vec<_> = rule
+        .clauses
+        .iter()
+        .enumerate()
+        .filter_map(|(i, clause)| match clause {
+            Clause::Fact(fact) if ctx.results.contains(&fact.name) => Some(i),
+            _ => None,
+        })
+        .collect();
+
+    if fact_positions.is_empty() {
+        // Will not change, so we only need to evaluate it once
+        let eval_loop = cmp_rule_incremental(ctx, rule, None)?;
+        Ok(format!(
+            "if ({first_iter}) {{\n{eval_loop}\n}}",
+            first_iter = VAR_FIRST_ITERATION,
+            eval_loop = eval_loop
+        ))
+    } else {
+        // Rule has one or more facts, so we use semi-naive evaluation
+        let variants = fact_positions
+            .into_iter()
+            .map(|update_position| cmp_rule_incremental(ctx, rule, Some(update_position)))
+            .collect::<Result<Box<_>>>()?;
+        Ok(variants.join("\n"))
+    }
+}
+
+/// Compile a single incremental semi-naive evaluation loop for a rule.
+fn cmp_rule_incremental(
+    ctx: &Context,
+    rule: &Rule,
+    update_position: Option<usize>,
+) -> Result<String> {
     let mut ctx = ctx.clone();
 
     let mut clauses = Vec::new();
-    for clause in &rule.clauses {
-        clauses.push(cmp_clause(&mut ctx, clause)?);
+    for (i, clause) in rule.clauses.iter().enumerate() {
+        let only_update = update_position == Some(i);
+        clauses.push(cmp_clause(&mut ctx, clause, only_update)?);
     }
 
     let goal = format!(
@@ -385,7 +426,7 @@ if (!{set}.includes({goal})) {new}.add({goal});
     Ok(code)
 }
 
-fn cmp_clause(ctx: &mut Context, clause: &Clause) -> Result<String> {
+fn cmp_clause(ctx: &mut Context, clause: &Clause, only_update: bool) -> Result<String> {
     match clause {
         Clause::Fact(fact) => {
             let mut bound_fields = BTreeMap::new();
@@ -410,13 +451,20 @@ fn cmp_clause(ctx: &mut Context, clause: &Clause) -> Result<String> {
 
             if bound_fields.is_empty() {
                 // No bound fields, just iterate over the set.
+                let name = fact.name.clone();
+                let set = ctx.get(&if !only_update {
+                    VarId::Set(name)
+                } else {
+                    VarId::Update(name)
+                })?;
+
                 let code = format!(
                     "
 for (const {obj} of {set}) {{
     {setters}
 ",
                     obj = VAR_OBJ,
-                    set = ctx.get(&VarId::Set(fact.name.clone()))?,
+                    set = set,
                     setters = setters.join("\n"),
                 );
                 Ok(code.trim().into())
@@ -426,6 +474,12 @@ for (const {obj} of {set}) {{
                     name: fact.name.clone(),
                     bound: bound_fields.keys().cloned().collect(),
                 };
+                let index = ctx.get(&if !only_update {
+                    VarId::Index(index)
+                } else {
+                    VarId::IndexUpdate(index)
+                })?;
+
                 let code = format!(
                     "
 for (const {obj} of {index}.get({imm}.Map({bindings})) ?? []) {{
@@ -433,7 +487,7 @@ for (const {obj} of {index}.get({imm}.Map({bindings})) ?? []) {{
 ",
                     obj = VAR_OBJ,
                     imm = VAR_IMMUTABLE,
-                    index = ctx.get(&VarId::Index(index))?,
+                    index = index,
                     bindings = cmp_fields(ctx, &bound_fields)?,
                     setters = setters.join("\n"),
                 );
@@ -441,7 +495,10 @@ for (const {obj} of {index}.get({imm}.Map({bindings})) ?? []) {{
             }
         }
 
-        Clause::Expr(expr) => Ok(format!("if ({}) {{\n", expr)),
+        Clause::Expr(expr) => {
+            assert!(!only_update);
+            Ok(format!("if ({}) {{\n", expr))
+        }
     }
 }
 
@@ -461,23 +518,23 @@ fn cmp_value(ctx: &Context, value: &Value) -> Result<String> {
     })
 }
 
-fn cmp_set_update_to_new(ctx: &Context, prog: &Program) -> Result<String> {
-    let setters = prog
-        .results()
-        .into_iter()
+fn cmp_set_update_to_new(ctx: &Context) -> Result<String> {
+    let setters = ctx
+        .results
+        .iter()
         .map(|name| {
             Ok(format!(
                 "{} = {}.asImmutable();",
                 ctx.get(&VarId::Update(name.clone()))?,
-                ctx.get(&VarId::New(name))?,
+                ctx.get(&VarId::New(name.clone()))?,
             ))
         })
         .collect::<Result<Box<_>>>()?;
     Ok(setters.join("\n"))
 }
 
-fn cmp_output(ctx: &Context, prog: &Program) -> Result<String> {
-    let obj = cmp_object(&prog.results(), |name| {
+fn cmp_output(ctx: &Context) -> Result<String> {
+    let obj = cmp_object(ctx.results.as_ref(), |name| {
         Ok(format!("{}.toJS()", ctx.get(&VarId::Set(name.clone()))?))
     })?;
     Ok(format!("return {};", obj))
