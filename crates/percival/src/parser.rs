@@ -152,18 +152,23 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .then_ignore(end())
 }
 
-/// Checks if something is a reserved word in JavaScript. These cannot be used
-/// as an identifier.
+/// Checks if a token is reserved, which cannot be used as an identifier.
 ///
-/// See [https://262.ecma-international.org/6.0/#sec-reserved-words].
+/// See [https://262.ecma-international.org/6.0/#sec-reserved-words] for
+/// JavaScript reserved words. The rest of the tokens listed here are prohibited
+/// for internal reasons, or because they mean other things in the context of
+/// the Percival language.
 fn is_reserved_word(name: &str) -> bool {
     match name {
+        // Reserved words in the ECMAScript standard
         "break" | "do" | "in" | "typeof" | "case" | "else" | "instanceof" | "var" | "catch"
         | "export" | "new" | "void" | "class" | "extends" | "return" | "while" | "const"
         | "finally" | "super" | "with" | "continue" | "for" | "switch" | "yield" | "debugger"
         | "function" | "this" | "default" | "if" | "throw" | "delete" | "import" | "try"
         | "enum" | "await" | "implements" | "package" | "protected" | "interface" | "private"
         | "public" | "null" | "true" | "false" => true,
+
+        // Internal names, reserved to avoid conflicts
         _ => name.starts_with("__percival"),
     }
 }
@@ -391,5 +396,27 @@ hello(x: /* asdf */ 3) :-
             .trim(),
         );
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_empty() {
+        let parser = parser();
+        let result = parser.parse("any() :- ok().");
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Program {
+                rules: vec![Rule {
+                    goal: Fact {
+                        name: "any".into(),
+                        props: btreemap! {},
+                    },
+                    clauses: vec![Clause::Fact(Fact {
+                        name: "ok".into(),
+                        props: btreemap! {},
+                    })],
+                }],
+            },
+        );
     }
 }
