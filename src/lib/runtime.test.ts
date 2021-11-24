@@ -4,16 +4,25 @@ import { build } from "./runtime";
 
 function checkProgram({
   src,
+  deps,
+  results,
   input,
   output,
 }: {
   src: string;
+  deps: string[];
+  results: string[];
   input: Record<string, object[]>;
   output: Record<string, object[]>;
 }) {
   const result = build(src);
-  expect(result.errors).to.be.undefined;
-  expect(result.evaluate).not.to.be.undefined;
+  expect(result.ok).to.be.true;
+  if (!result.ok) {
+    // unreachable, needed for type inference
+    throw null;
+  }
+  expect(result.deps).to.have.members(deps);
+  expect(result.results).to.have.members(results);
   const observed = result.evaluate(input);
   expect(observed).to.have.keys(...Object.keys(output));
   for (const key of Object.keys(output)) {
@@ -24,15 +33,18 @@ function checkProgram({
 describe("basic compilation", () => {
   it("can build code", async () => {
     await init();
-    expect(build("tc(x: 3).").errors).to.be.undefined;
-    expect(build("tc(x:).").errors).not.to.be.undefined;
+    expect(build("tc(x: 3).").ok).to.be.true;
+    expect(build("tc(x:).").ok).to.be.false;
   });
 
   it("evaluates a simple program", async () => {
     await init();
     const result = build("tc(x: 3).");
-    expect(result.evaluate).not.to.be.undefined;
-    expect(result.evaluate({})).to.be.deep.equal({ tc: [{ x: 3 }] });
+    expect(result.ok).to.be.true;
+    if (!result.ok) throw null; // unreachable
+    expect(result.evaluate({})).to.be.deep.equal({
+      tc: [{ x: 3 }],
+    });
   });
 
   it("evaluates transitive closure from input", async () => {
@@ -42,6 +54,8 @@ describe("basic compilation", () => {
 tc(x, y) :- edge(x, y).
 tc(x, y) :- tc(x, y: z), edge(x: z, y).
 `,
+      deps: ["edge"],
+      results: ["tc"],
       input: {
         edge: [
           { x: 2, y: 3 },
@@ -67,6 +81,8 @@ edge(x: "bar", y: "baz").
 tc(x, y) :- edge(x, y).
 tc(x, y) :- tc(x, y: z), edge(x: z, y).
 `,
+      deps: [],
+      results: ["edge", "tc"],
       input: {},
       output: {
         edge: [
@@ -90,6 +106,8 @@ describe("embedded backtick expressions", () => {
       src: `
 name(value: \`first + " " + last\`) :- person(first, last).
 `,
+      deps: ["person"],
+      results: ["name"],
       input: {
         person: [
           {
@@ -119,6 +137,8 @@ fib(n: \`n + 1\`, x: \`x1 + x2\`) :-
     fib(n: \`n - 1\`, x: x2),
     \`n < 10\`.
 `,
+      deps: [],
+      results: ["fib"],
       input: {},
       output: {
         fib: [

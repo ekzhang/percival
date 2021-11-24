@@ -6,6 +6,7 @@ use chumsky::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use percival::{
+    ast::Program,
     codegen,
     parser::{format_errors, parser},
 };
@@ -31,20 +32,42 @@ pub fn compile(src: &str) -> CompilerResult {
             .parse(src)
             .map_err(|err| format_errors(src, err))
             .and_then(|prog| {
-                codegen::compile(&prog).map_err(|err| format!("Compiler error: {}", err))
+                let src =
+                    codegen::compile(&prog).map_err(|err| format!("Compiler error: {}", err))?;
+                Ok((prog, src))
             })
     })
 }
 
 /// The result of a compilation.
 #[wasm_bindgen]
-pub struct CompilerResult(Result<String, String>);
+pub struct CompilerResult(Result<(Program, String), String>);
 
 #[wasm_bindgen]
 impl CompilerResult {
     /// Returns the compiled JavaScript program.
-    pub fn ok(&self) -> Option<String> {
-        self.0.as_ref().ok().cloned()
+    pub fn src(&self) -> Option<String> {
+        self.0.as_ref().ok().map(|(_, src)| src.clone())
+    }
+
+    /// Returns the names of relations that are dependencies of this program.
+    pub fn deps(&self) -> Option<Vec<JsValue>> {
+        self.0.as_ref().ok().map(|(prog, _)| {
+            prog.deps()
+                .into_iter()
+                .map(|s| JsValue::from_str(&s))
+                .collect()
+        })
+    }
+
+    /// Returns the names of relations that are produced by this program.
+    pub fn results(&self) -> Option<Vec<JsValue>> {
+        self.0.as_ref().ok().map(|(prog, _)| {
+            prog.results()
+                .into_iter()
+                .map(|s| JsValue::from_str(&s))
+                .collect()
+        })
     }
 
     /// Returns a string representation of any errors during compilation.
