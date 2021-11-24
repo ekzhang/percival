@@ -59,7 +59,7 @@
 
 <style lang="postcss">
   .dirty :global(.cm-editor .cm-scroller) {
-    @apply border-orange-200;
+    @apply border-orange-200 bg-orange-50;
   }
   .dirty :global(.cm-editor .cm-line) {
     @apply border-orange-100;
