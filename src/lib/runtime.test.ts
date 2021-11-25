@@ -2,7 +2,7 @@ import { expect } from "chai";
 import init from "percival-wasm";
 import { build } from "./runtime";
 
-function checkProgram({
+async function checkProgram({
   src,
   deps,
   results,
@@ -23,7 +23,7 @@ function checkProgram({
   }
   expect(result.deps).to.have.members(deps);
   expect(result.results).to.have.members(results);
-  const observed = result.evaluate(input);
+  const observed = await result.evaluate(input);
   expect(observed).to.have.keys(...Object.keys(output));
   for (const key of Object.keys(output)) {
     expect(observed[key]).to.have.deep.members(output[key]);
@@ -42,14 +42,14 @@ describe("basic compilation", () => {
     const result = build("tc(x: 3).");
     expect(result.ok).to.be.true;
     if (!result.ok) throw null; // unreachable
-    expect(result.evaluate({})).to.be.deep.equal({
+    expect(await result.evaluate({})).to.be.deep.equal({
       tc: [{ x: 3 }],
     });
   });
 
   it("evaluates transitive closure from input", async () => {
     await init();
-    checkProgram({
+    await checkProgram({
       src: `
 tc(x, y) :- edge(x, y).
 tc(x, y) :- tc(x, y: z), edge(x: z, y).
@@ -74,7 +74,7 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
 
   it("evaluates a bigger transitive closure", async () => {
     await init();
-    checkProgram({
+    await checkProgram({
       src: `
 tc(x, y) :- tc(x, y: z), edge(x: z, y).
 tc(x, y) :- edge(x, y).
@@ -109,7 +109,7 @@ tc(x, y) :- edge(x, y).
 
   it("evaluates transitive closure inline", async () => {
     await init();
-    checkProgram({
+    await checkProgram({
       src: `
 edge(x: "foo", y: "bar").
 edge(x: "bar", y: "baz").
@@ -137,7 +137,7 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
 describe("embedded backtick expressions", () => {
   it("evaluates backtick expressions", async () => {
     await init();
-    checkProgram({
+    await checkProgram({
       src: `
 name(value: \`first + " " + last\`) :- person(first, last).
 `,
@@ -163,7 +163,7 @@ name(value: \`first + " " + last\`) :- person(first, last).
 
   it("evaluates fibonacci numbers", async () => {
     await init();
-    checkProgram({
+    await checkProgram({
       src: `
 fib(n: 0, x: 0).
 fib(n: 1, x: 1).
@@ -191,5 +191,22 @@ fib(n: \`n + 1\`, x: \`x1 + x2\`) :-
         ],
       },
     });
+  });
+});
+
+describe("promise cancellation", () => {
+  it("can cancel evaluation", async () => {
+    await init();
+    const result = build("ok().");
+    expect(result.ok).to.be.true;
+    if (!result.ok) throw null; // unreachable
+    const promise = result.evaluate({});
+    promise.cancel();
+    try {
+      await promise;
+      throw new Error("Promise should have thrown");
+    } catch (error) {
+      expect(error.message).to.equal("Promise was cancelled by user");
+    }
   });
 });
