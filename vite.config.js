@@ -6,7 +6,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 export default defineConfig({
   build: {
     target: "esnext",
-    chunkSizeWarningLimit: 2500,
+    chunkSizeWarningLimit: 1500,
   },
   resolve: {
     alias: {

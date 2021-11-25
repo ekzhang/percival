@@ -1,5 +1,5 @@
 import { compile } from "percival-wasm";
-import Worker from "./worker?worker&inline";
+import Worker from "./worker?worker";
 
 interface CancellablePromise<T> extends Promise<T> {
   cancel: () => void;

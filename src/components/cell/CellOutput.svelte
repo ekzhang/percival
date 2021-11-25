@@ -5,18 +5,12 @@
   import remarkRehype from "remark-rehype";
   import rehypeKatex from "rehype-katex";
   import rehypeStringify from "rehype-stringify";
-  import prettier from "prettier";
-  import parserBabel from "prettier/parser-babel";
   import AnsiUp from "ansi_up";
   import { compile } from "percival-wasm";
 
   import type { CellData } from "@/lib/notebook";
 
   export let data: CellData;
-
-  function prettify(code: string): string {
-    return prettier.format(code, { parser: "babel", plugins: [parserBabel] });
-  }
 
   const ansi_up = new AnsiUp();
 
@@ -38,7 +32,7 @@
     {@html rendered}
   </div>
 {:else if compiled.is_ok()}
-  <pre class="output">{prettify(compiled.js())}</pre>
+  <pre class="output">{compiled.js()}</pre>
 {:else}
   <pre class="error">{@html ansi_up.ansi_to_html(compiled.err())}</pre>
 {/if}
