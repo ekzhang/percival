@@ -6,7 +6,7 @@ use chumsky::prelude::*;
 use crate::ast::{Clause, Fact, Literal, Program, Rule, Value};
 
 /// Constructs a parser combinator for the Percival language.
-pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
+pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
     let id = text::ident().labelled("ident");
 
     let comments = {
@@ -150,6 +150,7 @@ pub fn parser() -> impl Parser<char, Program, Error = Simple<char>> {
         .repeated()
         .map(|rules| Program { rules })
         .then_ignore(end())
+        .boxed()
 }
 
 /// Checks if a token is reserved, which cannot be used as an identifier.

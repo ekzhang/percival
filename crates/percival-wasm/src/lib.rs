@@ -24,11 +24,15 @@ pub fn start() {
     console_error_panic_hook::set_once();
 }
 
-/// Computes the sum of two integers.
+/// Compile a Percival program and return the result.
 #[wasm_bindgen]
 pub fn compile(src: &str) -> CompilerResult {
-    CompilerResult({
-        parser()
+    thread_local! {
+        static PARSER: BoxedParser<'static, char, Program, Simple<char>> = parser();
+    }
+
+    CompilerResult(PARSER.with(|parser| {
+        parser
             .parse(src)
             .map_err(|err| format_errors(src, err))
             .and_then(|prog| {
@@ -36,7 +40,7 @@ pub fn compile(src: &str) -> CompilerResult {
                     codegen::compile(&prog).map_err(|err| format!("Compiler error: {}", err))?;
                 Ok((prog, js))
             })
-    })
+    }))
 }
 
 /// The result of a compilation.

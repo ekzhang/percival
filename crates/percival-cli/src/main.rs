@@ -1,3 +1,5 @@
+//! Crate containing code for the `percival-cli` binary.
+
 use std::{
     fs::read_to_string,
     io::{self, Read, Write},
@@ -26,6 +28,7 @@ struct Opt {
     format: bool,
 }
 
+/// Run the main program.
 fn main() {
     let opt = Opt::from_args();
 
