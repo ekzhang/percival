@@ -38,7 +38,7 @@
     {@html rendered}
   </div>
 {:else if compiled.is_ok()}
-  <pre class="output">{prettify(compiled.src())}</pre>
+  <pre class="output">{prettify(compiled.js())}</pre>
 {:else}
   <pre class="error">{@html ansi_up.ansi_to_html(compiled.err())}</pre>
 {/if}

@@ -32,9 +32,9 @@ pub fn compile(src: &str) -> CompilerResult {
             .parse(src)
             .map_err(|err| format_errors(src, err))
             .and_then(|prog| {
-                let src =
+                let js =
                     codegen::compile(&prog).map_err(|err| format!("Compiler error: {}", err))?;
-                Ok((prog, src))
+                Ok((prog, js))
             })
     })
 }
@@ -46,8 +46,8 @@ pub struct CompilerResult(Result<(Program, String), String>);
 #[wasm_bindgen]
 impl CompilerResult {
     /// Returns the compiled JavaScript program.
-    pub fn src(&self) -> Option<String> {
-        self.0.as_ref().ok().map(|(_, src)| src.clone())
+    pub fn js(&self) -> Option<String> {
+        self.0.as_ref().ok().map(|(_, js)| js.clone())
     }
 
     /// Returns the names of relations that are dependencies of this program.

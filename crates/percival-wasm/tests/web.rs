@@ -13,7 +13,7 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
 fn basic_compile() {
-    assert!(compile("tc(x: 3, y: 4).").src().is_some());
+    assert!(compile("tc(x: 3, y: 4).").js().is_some());
     assert!(compile("tc(x,").err().is_some());
 }
 

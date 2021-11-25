@@ -21,7 +21,7 @@ export function build(src: string): CompilerResult {
     const eval_fn = new Function(
       "__percival_deps",
       "__percival_immutable",
-      result.src()
+      result.js(),
     );
     return {
       ok: true,
