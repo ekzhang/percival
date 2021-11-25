@@ -1,23 +1,17 @@
 <script lang="ts">
-  import { CellData, NotebookState } from "@/lib/notebook";
+  import { NotebookState } from "@/lib/notebook";
+  import { createNotebookStore } from "@/lib/stores";
+  import { onMount } from "svelte";
   import Cell from "./cell/Cell.svelte";
   import CellDivider from "./cell/CellDivider.svelte";
 
-  let notebook = new NotebookState();
+  const notebookStore = createNotebookStore(new NotebookState());
+  $: notebook = $notebookStore;
 
-  function handleChange(cell: CellData, value: string) {
-    cell.value = value;
-    notebook = notebook;
-  }
-
-  function handleCreate(index: number, type: "markdown" | "code") {
-    notebook.insertCell(index, { type, value: "", hidden: false });
-    notebook = notebook;
-  }
-
-  notebook.addCell({
-    type: "markdown",
-    value: `# A Beginner's Notebook
+  onMount(() => {
+    notebook.addCell({
+      type: "markdown",
+      value: `# A Beginner's Notebook
 
 Hello world! Welcome to my new cell :)
 
@@ -30,11 +24,11 @@ alias(X, Y) :- ld(X, A, F), alias(A, B), st(B, F, Y).
 \`\`\`
 
 The above is a code block.`,
-    hidden: false,
-  });
-  notebook.addCell({
-    type: "markdown",
-    value: `## This is my first Percival notebook.
+      hidden: false,
+    });
+    notebook.addCell({
+      type: "markdown",
+      value: `## This is my first Percival notebook.
 
 Hello **world**! My \`name\` is _Eric_. This is an example of a Markdown cell.
 
@@ -47,28 +41,36 @@ Voluptate voluptatem tempora rerum ipsam accusantium dolorum fuga veniam. Tenetu
 ![Picture of a mountain](https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/800px-Fronalpstock_big.jpg)
 
 Hopefully you see the image above!`,
-    hidden: false,
+      hidden: false,
+    });
   });
 </script>
 
 <div class="space-y-3 pt-8 pb-24 px-3">
-  {#each notebook.cells as cell, i (cell)}
-    <CellDivider on:create={(event) => handleCreate(i, event.detail.type)} />
+  {#each [...notebook] as [id, cell] (id)}
+    <CellDivider
+      on:create={(event) => {
+        notebook.addCellBefore(id, {
+          type: event.detail.type,
+          value: "",
+          hidden: false,
+        });
+      }}
+    />
     <Cell
       data={cell}
-      on:change={(event) => handleChange(cell, event.detail.value)}
-      on:toggle={() => {
-        cell.hidden = !cell.hidden;
-        notebook = notebook;
-      }}
-      on:delete={() => {
-        notebook.deleteCell(i);
-        notebook = notebook;
-      }}
+      on:change={(event) => notebook.editCell(id, event.detail.value)}
+      on:toggle={() => notebook.toggleHidden(id)}
+      on:delete={() => notebook.deleteCell(id)}
     />
   {/each}
   <CellDivider
-    on:create={(event) =>
-      handleCreate(notebook.cells.length, event.detail.type)}
+    on:create={(event) => {
+      notebook.addCell({
+        type: event.detail.type,
+        value: "",
+        hidden: false,
+      });
+    }}
   />
 </div>
