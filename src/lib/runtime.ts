@@ -59,10 +59,10 @@ export function build(src: string): CompilerResult {
         };
         return promise as EvalPromise;
       },
-      deps: result.deps(),
-      results: result.results(),
+      deps: result.deps()!,
+      results: result.results()!,
     };
   } else {
-    return { ok: false, errors: result.err() };
+    return { ok: false, errors: result.err()! };
   }
 }

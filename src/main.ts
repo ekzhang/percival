@@ -10,7 +10,7 @@ import init from "percival-wasm";
 await init();
 
 const app = new App({
-  target: document.getElementById("app"),
+  target: document.getElementById("app")!,
 });
 
 export default app;

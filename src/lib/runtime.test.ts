@@ -205,7 +205,7 @@ describe("promise cancellation", () => {
     try {
       await promise;
       throw new Error("Promise should have thrown");
-    } catch (error) {
+    } catch (error: any) {
       expect(error.message).to.equal("Promise was cancelled by user");
     }
   });

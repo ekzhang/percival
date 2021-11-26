@@ -9,8 +9,8 @@
   <div class="markdown-output">
     {@html markdownToHtml(state.value)}
   </div>
-{:else if state.compilerResult.ok === false}
-  <pre class="error">{@html ansiToHtml(state.compilerResult.errors)}</pre>
+{:else if state.result.ok === false}
+  <pre class="error">{@html ansiToHtml(state.result.errors)}</pre>
 {:else if state.status === "pending"}
   <div class="pending">Pending...</div>
 {:else}
