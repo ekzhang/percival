@@ -4,6 +4,7 @@
 
 use chumsky::prelude::*;
 use wasm_bindgen::prelude::*;
+use yansi::Paint;
 
 use percival::{
     ast::Program,
@@ -36,8 +37,8 @@ pub fn compile(src: &str) -> CompilerResult {
             .parse(src)
             .map_err(|err| format_errors(src, err))
             .and_then(|prog| {
-                let js =
-                    codegen::compile(&prog).map_err(|err| format!("Compiler error: {}", err))?;
+                let js = codegen::compile(&prog)
+                    .map_err(|err| format!("{} {}", Paint::red("Error:"), err))?;
                 Ok((prog, js))
             })
     }))

@@ -223,6 +223,7 @@ dependencies = [
  "percival",
  "wasm-bindgen",
  "wasm-bindgen-test",
+ "yansi",
 ]
 
 [[package]]

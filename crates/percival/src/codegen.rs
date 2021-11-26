@@ -15,7 +15,7 @@ use crate::ast::{Clause, Literal, Program, Rule, Value};
 #[derive(Error, Debug)]
 pub enum Error {
     /// A given variable was not found in context.
-    #[error("could not find definition for `{0:?}` in context")]
+    #[error("Could not find definition of `{0:?}` in context")]
     UndefVar(VarId),
 }
 

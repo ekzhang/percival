@@ -1,45 +1,29 @@
 <script lang="ts">
-  import { unified } from "unified";
-  import remarkParse from "remark-parse";
-  import remarkMath from "remark-math";
-  import remarkRehype from "remark-rehype";
-  import rehypeKatex from "rehype-katex";
-  import rehypeStringify from "rehype-stringify";
-  import AnsiUp from "ansi_up";
-  import { compile } from "percival-wasm";
+  import type { CellState } from "@/lib/notebook";
+  import { ansiToHtml, markdownToHtml } from "@/lib/text";
 
-  import type { CellData } from "@/lib/notebook";
-
-  export let data: CellData;
-
-  const ansi_up = new AnsiUp();
-
-  const pipeline = unified()
-    .use(remarkParse)
-    .use(remarkMath)
-    .use(remarkRehype)
-    .use(rehypeKatex)
-    .use(rehypeStringify);
-
-  $: rendered =
-    data.type === "markdown" ? pipeline.processSync(data.value) : null;
-
-  $: compiled = data.type === "code" ? compile(data.value) : null;
+  export let data: CellState;
 </script>
 
 {#if data.type === "markdown"}
   <div class="markdown-output">
-    {@html rendered}
+    {@html markdownToHtml(data.value)}
   </div>
-{:else if compiled.is_ok()}
-  <pre class="output">{compiled.js()}</pre>
+{:else if data.compilerResult.ok === false}
+  <pre class="error">{@html ansiToHtml(data.compilerResult.errors)}</pre>
+{:else if data.status === "pending"}
+  <div class="pending">Pending...</div>
 {:else}
-  <pre class="error">{@html ansi_up.ansi_to_html(compiled.err())}</pre>
+  <div class="output">Done! (TODO: Display outputs.)</div>
 {/if}
 
 <style lang="postcss">
+  .pending {
+    @apply mb-1 p-3 rounded-sm bg-cyan-50 border border-cyan-300 text-cyan-800 italic;
+  }
+
   .output {
-    @apply mb-1 p-3 rounded-sm bg-green-100 border border-green-300 max-h-64 overflow-y-auto;
+    @apply mb-1 p-3 rounded-sm border border-slate-200;
   }
 
   .error {

@@ -25,7 +25,10 @@
     </div>
     <button
       class="w-4 h-4 text-gray-400 hover:text-red-600 transition-colors"
-      on:click={() => dispatch("delete")}
+      on:click={(event) => {
+        event.stopPropagation();
+        dispatch("delete");
+      }}
     >
       <FaTrashAlt />
     </button>

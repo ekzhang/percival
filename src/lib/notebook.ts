@@ -1,25 +1,44 @@
 import { nanoid } from "nanoid";
+import { build } from "./runtime";
+import type { CompilerResult } from "./runtime";
 
-type MarkdownCell = {
+export type MarkdownCell = {
   type: "markdown";
   hidden: boolean;
   value: string;
 };
 
-type CodeCell = {
+export type CodeCellData = {
   type: "code";
   hidden: boolean;
   value: string;
 };
 
-export type CellData = MarkdownCell | CodeCell;
+export type CellData = MarkdownCell | CodeCellData;
+
+export type CodeCellState = CodeCellData & {
+  stale: boolean;
+  compilerResult: CompilerResult;
+  status: "pending" | "done";
+  graphErrors?: string;
+  runtimeErrors?: string;
+  output?: Record<string, object>;
+  evaluateHandle?: () => void;
+};
+
+export type CellState = MarkdownCell | CodeCellState;
+
+function clear(state: CodeCellState) {
+  state.evaluateHandle?.();
+  state.graphErrors = state.runtimeErrors = state.output = undefined;
+}
 
 export class NotebookState {
   /** Order of cells by ID. */
   private order: string[];
 
   /** Current state of each cell. */
-  private cells: Map<string, CellData>;
+  private cells: Map<string, CellState>;
 
   /** Callbacks on notebook state change. */
   private callbacks: Map<string, () => void>;
@@ -36,11 +55,13 @@ export class NotebookState {
 
   addCell(cell: CellData) {
     this.insertCell(this.order.length, cell);
+    this.rebuildGraph();
   }
 
   addCellBefore(id: string, cell: CellData) {
     const index = this.order.findIndex((v) => v === id);
     this.insertCell(index, cell);
+    this.rebuildGraph();
   }
 
   private insertCell(index: number, cell: CellData) {
@@ -49,8 +70,17 @@ export class NotebookState {
     }
     const id = nanoid();
     this.order.splice(index, 0, id);
-    this.cells.set(id, cell);
-    this.revalidate();
+    if (cell.type === "markdown") {
+      this.cells.set(id, cell);
+    } else {
+      const result = build(cell.value);
+      this.cells.set(id, {
+        ...cell,
+        stale: true,
+        compilerResult: result,
+        status: "pending",
+      });
+    }
   }
 
   deleteCell(id: string) {
@@ -60,17 +90,35 @@ export class NotebookState {
     }
     this.order.splice(index, 1);
     this.cells.delete(id);
-    this.revalidate();
+    this.rebuildGraph();
   }
 
   editCell(id: string, value: string) {
-    this.cells.get(id).value = value;
-    this.revalidate();
+    const cell = this.cells.get(id);
+    cell.value = value;
+    if (cell.type === "code") {
+      clear(cell);
+      cell.stale = true;
+      cell.compilerResult = build(value);
+      cell.status = "pending";
+      this.rebuildGraph();
+    } else {
+      this.revalidate();
+    }
   }
 
   toggleHidden(id: string) {
     const cell = this.cells.get(id);
     cell.hidden = !cell.hidden;
+    this.revalidate();
+  }
+
+  private rebuildGraph() {
+    // TODO: Update graph dependencies and pending/running cells.
+    //   1. Find orphaned cells and duplicate outputs, set error messages.
+    //   2. Set to "pending" - all cells that need to be reevaluated. Cancel
+    //      execution of all previously pending cells.
+    //   3. Construct a graph and evaluate in reverse topological order.
     this.revalidate();
   }
 
