@@ -122,7 +122,7 @@ export class NotebookState {
     this.revalidate();
   }
 
-  *[Symbol.iterator](): IterableIterator<[string, Readonly<CellData>]> {
+  *[Symbol.iterator](): IterableIterator<[string, Readonly<CellState>]> {
     for (const id of this.order) {
       yield [id, this.cells.get(id)];
     }

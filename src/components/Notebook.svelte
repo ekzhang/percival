@@ -58,7 +58,7 @@ Hopefully you see the image above!`,
       }}
     />
     <Cell
-      data={cell}
+      state={cell}
       on:change={(event) => notebook.editCell(id, event.detail.value)}
       on:toggle={() => notebook.toggleHidden(id)}
       on:delete={() => notebook.deleteCell(id)}

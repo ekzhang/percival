@@ -2,16 +2,16 @@
   import type { CellState } from "@/lib/notebook";
   import { ansiToHtml, markdownToHtml } from "@/lib/text";
 
-  export let data: CellState;
+  export let state: CellState;
 </script>
 
-{#if data.type === "markdown"}
+{#if state.type === "markdown"}
   <div class="markdown-output">
-    {@html markdownToHtml(data.value)}
+    {@html markdownToHtml(state.value)}
   </div>
-{:else if data.compilerResult.ok === false}
-  <pre class="error">{@html ansiToHtml(data.compilerResult.errors)}</pre>
-{:else if data.status === "pending"}
+{:else if state.compilerResult.ok === false}
+  <pre class="error">{@html ansiToHtml(state.compilerResult.errors)}</pre>
+{:else if state.status === "pending"}
   <div class="pending">Pending...</div>
 {:else}
   <div class="output">Done! (TODO: Display outputs.)</div>

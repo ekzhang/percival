@@ -3,13 +3,13 @@
   import { EditorView, KeyBinding, keymap } from "@codemirror/view";
   import { indentWithTab } from "@codemirror/commands";
   import { markdown } from "@codemirror/lang-markdown";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
 
-  import type { CellData } from "@/lib/notebook";
+  import type { CellState } from "@/lib/notebook";
 
   const dispatch = createEventDispatcher();
 
-  export let data: CellData;
+  export let state: CellState;
 
   let currentValue: string;
 
@@ -32,10 +32,10 @@
   }
 
   onMount(() => {
-    currentValue = data.value;
+    currentValue = state.value;
     view = new EditorView({
       state: EditorState.create({
-        doc: data.value,
+        doc: state.value,
         extensions: [
           basicSetup,
           EditorView.lineWrapping,
@@ -53,9 +53,13 @@
       parent: editorParent,
     });
   });
+
+  onDestroy(() => {
+    view.destroy();
+  });
 </script>
 
-<div bind:this={editorParent} class:dirty={data.value !== currentValue} />
+<div bind:this={editorParent} class:dirty={state.value !== currentValue} />
 
 <style lang="postcss">
   .dirty :global(.cm-editor .cm-scroller) {

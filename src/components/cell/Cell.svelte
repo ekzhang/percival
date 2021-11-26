@@ -5,19 +5,19 @@
   import FaChevronRight from "svelte-icons/fa/FaChevronRight.svelte";
   import FaTrashAlt from "svelte-icons/fa/FaTrashAlt.svelte";
 
-  import type { CellData } from "@/lib/notebook";
+  import type { CellState } from "@/lib/notebook";
   import CellInput from "./CellInput.svelte";
   import CellOutput from "./CellOutput.svelte";
 
   const dispatch = createEventDispatcher();
 
-  export let data: CellData;
+  export let state: CellState;
 </script>
 
 <div class="cell" transition:fade>
   <button class="sidebar" on:click={() => dispatch("toggle")}>
     <div class="w-4 h-4">
-      {#if data.hidden}
+      {#if state.hidden}
         <FaChevronRight />
       {:else}
         <FaChevronDown />
@@ -33,9 +33,9 @@
       <FaTrashAlt />
     </button>
   </button>
-  <CellOutput {data} />
-  {#if !data.hidden}
-    <CellInput {data} on:change />
+  <CellOutput {state} />
+  {#if !state.hidden}
+    <CellInput {state} on:change />
   {/if}
 </div>
 
