@@ -145,10 +145,15 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
 
-    rule.padded()
+    let program = rule
+        .padded()
         .padded_by(comments)
         .repeated()
-        .map(|rules| Program { rules })
+        .map(|rules| Program { rules });
+
+    program
+        .padded()
+        .padded_by(comments)
         .then_ignore(end())
         .boxed()
 }
@@ -396,6 +401,26 @@ hello(x: /* asdf */ 3) :-
 "
             .trim(),
         );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_whitespace() {
+        let parser = parser();
+        let result = parser.parse("\n\n\n");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_trailing_eof_comment() {
+        // This example technically invalid under our grammar; however, most
+        // users would usually want to allow for comments at the end of a cell.
+        // To fix this, Percival programs should be terminated by newlines.
+        let parser = parser();
+        let result = parser.parse("// this comment has no trailing newline");
+        assert!(result.is_err());
+
+        let result = parser.parse("// this comment has a trailing newline\n");
         assert!(result.is_ok());
     }
 

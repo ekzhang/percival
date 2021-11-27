@@ -32,10 +32,11 @@ pub fn compile(src: &str) -> CompilerResult {
         static PARSER: BoxedParser<'static, char, Program, Simple<char>> = parser();
     }
 
+    let src = format!("{}\n", src);
     CompilerResult(PARSER.with(|parser| {
         parser
-            .parse(src)
-            .map_err(|err| format_errors(src, err))
+            .parse(&src[..])
+            .map_err(|err| format_errors(&src[..], err))
             .and_then(|prog| {
                 let js = codegen::compile(&prog)
                     .map_err(|err| format!("{} {}", Paint::red("Error:"), err))?;

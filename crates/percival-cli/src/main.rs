@@ -32,7 +32,7 @@ struct Opt {
 fn main() {
     let opt = Opt::from_args();
 
-    let src = match opt.input {
+    let mut src = match opt.input {
         Some(path) => read_to_string(path).unwrap(),
         None => {
             let mut buf = String::new();
@@ -40,6 +40,9 @@ fn main() {
             buf
         }
     };
+    if !src.ends_with('\n') {
+        src += "\n";
+    }
 
     let parser = parser();
     let prog = match parser.parse(&src[..]) {
