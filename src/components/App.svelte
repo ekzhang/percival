@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import type { Readable } from "svelte/store";
   import { NotebookState } from "@/lib/notebook";
   import { createNotebookStore } from "@/lib/stores";
   import { marshal, unmarshal } from "@/lib/marshal";
@@ -6,14 +8,30 @@
   import Header from "./Header.svelte";
   import Notebook from "./Notebook.svelte";
 
-  const notebookStore = createNotebookStore(
-    NotebookState.load(unmarshal(starter)),
-  );
-  $: notebook = $notebookStore;
+  let notebookStore: Readable<NotebookState> | undefined;
+  $: notebook = notebookStore ? $notebookStore : undefined;
+
+  onMount(async () => {
+    const params = new URLSearchParams(window.location.search);
+    let text = starter;
+    if (params.has("gist")) {
+      try {
+        const resp = await fetch(`/api?id=${params.get("gist")!}`);
+        if (!resp.ok) {
+          throw new Error(await resp.text());
+        }
+        text = await resp.text();
+      } catch (error: any) {
+        alert(`Error loading notebook: ${error.message}`);
+      }
+    }
+    notebookStore = createNotebookStore(NotebookState.load(unmarshal(text)));
+  });
 
   let sharing: "none" | "pending" | { id: string } = "none";
 
   async function handleShare() {
+    if (!notebook) return;
     sharing = "pending";
     try {
       const resp = await fetch("/api", {
@@ -39,5 +57,15 @@
   on:shareclose={() => (sharing = "none")}
 />
 <main class="max-w-screen-lg mx-auto">
-  <Notebook {notebook} />
+  {#if notebook === undefined}
+    <div class="flex-1 space-y-6 py-1 pt-8 pb-24 px-6 animate-pulse">
+      <div class="h-6 bg-blue-300 rounded w-3/4" />
+      <div class="space-y-3">
+        <div class="h-6 bg-blue-300 rounded" />
+        <div class="h-6 bg-blue-300 rounded w-5/6" />
+      </div>
+    </div>
+  {:else}
+    <Notebook {notebook} />
+  {/if}
 </main>
