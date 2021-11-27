@@ -40,7 +40,7 @@
     @apply mb-1 p-3 rounded-sm border border-slate-200;
   }
   .output.stale {
-    @apply border-yellow-200 animate-pulse;
+    @apply border-yellow-200 opacity-50;
     background-image: repeating-linear-gradient(
       45deg,
       theme(colors.yellow.50),
@@ -52,7 +52,7 @@
     animation: move-stripes 0.75s linear 0s infinite;
   }
   .output.pending {
-    @apply border-cyan-200 animate-pulse;
+    @apply border-cyan-200 opacity-50;
     background-image: repeating-linear-gradient(
       45deg,
       theme(colors.cyan.50),
