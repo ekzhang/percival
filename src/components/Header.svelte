@@ -105,6 +105,6 @@
   }
 
   .nav-buttons button i {
-    @apply inline-block h-5 w-5 mr-1;
+    @apply inline-block h-5 w-5 mr-[5px];
   }
 </style>

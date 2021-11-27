@@ -50,7 +50,7 @@
 
   .sidebar {
     @apply absolute h-full left-[-2000px] w-[2000px]
-      flex justify-end items-start space-x-2 p-2
+      flex justify-end items-start space-x-2 py-2 pr-3
       transition-all hover:bg-zinc-50 opacity-0 text-gray-400 hover:text-gray-800;
   }
 </style>

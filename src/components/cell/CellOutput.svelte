@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CellState } from "@/lib/notebook";
   import { ansiToHtml, markdownToHtml } from "@/lib/text";
+  import FullView from "./output/FullView.svelte";
 
   export let state: CellState;
 </script>
@@ -13,12 +14,12 @@
   <pre class="error">{@html ansiToHtml(state.result.errors)}</pre>
 {:else if state.graphErrors !== undefined}
   <div class="error">
-    <span class="text-red-600 font-semibold">[Graph Error]</span>
+    <span class="text-red-700">Graph Error:</span>
     {state.graphErrors}
   </div>
 {:else if state.runtimeErrors !== undefined}
   <div class="error">
-    <span class="text-red-600 font-semibold">[Runtime Error]</span>
+    <span class="text-red-700">Runtime Error:</span>
     {state.runtimeErrors}
   </div>
 {:else}
@@ -27,13 +28,15 @@
     class:stale={state.status === "stale"}
     class:pending={state.status === "pending"}
   >
-    {JSON.stringify(state.output)}
+    {#if state.output !== undefined}
+      <FullView value={state.output} />
+    {/if}
   </div>
 {/if}
 
 <style lang="postcss">
   .error {
-    @apply mb-1 p-3 rounded-sm bg-pink-100 border border-pink-300;
+    @apply mb-1 p-3 rounded-sm bg-pink-100 border border-pink-300 font-mono;
   }
 
   .output {
