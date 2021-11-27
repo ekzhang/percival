@@ -276,8 +276,8 @@ export class NotebookState {
     });
   }
 
-  /** Save the notebook in a reproducible format appropriate for storage. */
-  marshal(): Readonly<CellData>[] {
+  /** Save the notebook data in a reproducible format for storage. */
+  save(): Readonly<CellData>[] {
     const data = [];
     for (const [, cell] of this) {
       data.push({
@@ -289,8 +289,8 @@ export class NotebookState {
     return data;
   }
 
-  /** Load a marshalled notebook. */
-  static unmarshal(data: Readonly<CellData>[]): NotebookState {
+  /** Load a notebook from cell data. */
+  static load(data: Readonly<CellData>[]): NotebookState {
     const notebook = new NotebookState();
     for (let i = 0; i < data.length; i++) {
       notebook.insertCell(i, data[i]);
