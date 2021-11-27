@@ -42,7 +42,7 @@ describe("basic compilation", () => {
     const result = build("tc(x: 3).");
     expect(result.ok).to.be.true;
     if (!result.ok) throw null; // unreachable
-    expect(await result.evaluate({})).to.be.deep.equal({
+    expect(await result.evaluate({})).to.deep.equal({
       tc: [{ x: 3 }],
     });
   });

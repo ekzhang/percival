@@ -71,7 +71,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			},
 		})
 		if err != nil {
-			log.Fatalf("Failed to create a gist: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "Failed to connect to GitHub API")
+			return
 		}
 
 		output, err := json.Marshal(gist)

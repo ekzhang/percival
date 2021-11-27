@@ -1,15 +1,9 @@
 <script lang="ts">
-  import { NotebookState } from "@/lib/notebook";
-  import { createNotebookStore } from "@/lib/stores";
+  import type { NotebookState } from "@/lib/notebook";
   import Cell from "./cell/Cell.svelte";
   import CellDivider from "./cell/CellDivider.svelte";
-  import starter from "@/samples/starter.percival?raw";
-  import { unmarshal } from "@/lib/marshal";
 
-  const notebookStore = createNotebookStore(
-    NotebookState.load(unmarshal(starter)),
-  );
-  $: notebook = $notebookStore;
+  export let notebook: NotebookState;
 </script>
 
 <div class="space-y-3 pt-8 pb-24 px-3">
