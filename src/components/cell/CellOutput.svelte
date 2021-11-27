@@ -12,18 +12,44 @@
 {:else if state.result.ok === false}
   <pre class="error">{@html ansiToHtml(state.result.errors)}</pre>
 {:else if state.status === "pending"}
-  <div class="pending">Pending...</div>
+  {#if state.output === undefined}
+    <div class="pending">
+      <div class="animate-pulse bg-blue-200 rounded-md h-6 w-3/4 mb-4" />
+      <div class="animate-pulse bg-blue-200 rounded-md h-6 w-100 mb-2" />
+      <div class="animate-pulse bg-blue-200 rounded-md h-6 w-5/6" />
+    </div>
+  {:else}
+    <div class="output stale">
+      {JSON.stringify(state.output)}
+    </div>
+  {/if}
+{:else if state.graphErrors !== undefined}
+  <div class="error">
+    <span class="text-red-600 font-semibold">[Graph Error]</span>
+    {state.graphErrors}
+  </div>
+{:else if state.runtimeErrors !== undefined}
+  <div class="error">
+    <span class="text-red-600 font-semibold">[Runtime Error]</span>
+    {state.runtimeErrors}
+  </div>
 {:else}
-  <div class="output">Done! (TODO: Display outputs.)</div>
+  <div class="output" class:stale={state.status === "stale"}>
+    {JSON.stringify(state.output)}
+  </div>
 {/if}
 
 <style lang="postcss">
   .pending {
-    @apply mb-1 p-3 rounded-sm bg-cyan-50 border border-cyan-300 text-cyan-800 italic;
+    @apply mb-1 p-3 rounded-sm border border-blue-200;
   }
 
   .output {
     @apply mb-1 p-3 rounded-sm border border-slate-200;
+  }
+
+  .stale {
+    @apply text-yellow-900 border-yellow-200 bg-yellow-50 animate-pulse;
   }
 
   .error {

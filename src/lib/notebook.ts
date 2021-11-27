@@ -17,10 +17,9 @@ export type CodeCellData = {
 export type CellData = MarkdownCell | CodeCellData;
 
 export type CodeCellState = CodeCellData & {
-  stale: boolean;
   result: CompilerResult;
-  status: "pending" | "done";
-  output?: Record<string, object>;
+  status: "stale" | "pending" | "done";
+  output?: Record<string, object[]>;
   graphErrors?: string;
   runtimeErrors?: string;
   evaluateHandle?: () => void;
@@ -28,9 +27,10 @@ export type CodeCellState = CodeCellData & {
 
 export type CellState = MarkdownCell | CodeCellState;
 
-function clear(state: CodeCellState) {
-  state.evaluateHandle?.(); // cancel evaluation
-  state.graphErrors = state.runtimeErrors = state.evaluateHandle = undefined;
+function clear(cell: CodeCellState, status: CodeCellState["status"]) {
+  cell.evaluateHandle?.(); // cancel evaluation
+  cell.graphErrors = cell.runtimeErrors = cell.evaluateHandle = undefined;
+  cell.status = status;
 }
 
 export class NotebookState {
@@ -75,9 +75,8 @@ export class NotebookState {
     } else {
       this.cells.set(id, {
         ...cell,
-        stale: true,
         result: build(cell.value),
-        status: "pending",
+        status: "stale",
       });
     }
   }
@@ -96,10 +95,8 @@ export class NotebookState {
     const cell = this.getCell(id);
     cell.value = value;
     if (cell.type === "code") {
-      clear(cell);
-      cell.stale = true;
+      clear(cell, "stale");
       cell.result = build(value);
-      cell.status = "pending";
       this.rebuildGraph();
     } else {
       this.revalidate();
@@ -120,18 +117,28 @@ export class NotebookState {
     return cell;
   }
 
+  /**
+   * Update graph dependencies and evaluate pending/running cells.
+   *
+   * This is a fairly complex function. Roughly speaking, it is responsible for
+   * the following execution strategy:
+   *
+   * 1. Find orphaned cells and duplicate outputs, set error messages.
+   * 2. Set to "pending" - all stale cells that need to be re-evaluated. Cancel
+   *    execution of all previously running cells.
+   * 3. Revalidate to track changes.
+   * 4. Start evaluating those stale cells asynchronously in separate worker
+   *    processes. On error, set the "runtimeErrors" property, and otherwise set
+   *    the output on success while marking dependents as stale.
+   */
   private rebuildGraph() {
-    // TODO: Update graph dependencies and pending/running cells.
-    //   1. Find orphaned cells and duplicate outputs, set error messages.
-    //   2. Set to "pending" - all cells that need to be reevaluated. Cancel
-    //      execution of all previously pending cells.
-    //   3. Construct a graph and evaluate in reverse topological order.
-    //   4. Revalidate.
-
     // For each relation, a list of all cells that create that relation.
     const creators = new Map<string, string[]>();
 
     for (const [id, cell] of this.codeCells()) {
+      if (cell.graphErrors !== undefined) {
+        delete cell.graphErrors;
+      }
       if (cell.result.ok) {
         for (const relation of cell.result.results) {
           const array = creators.get(relation) ?? [];
@@ -144,36 +151,106 @@ export class NotebookState {
     // Check for duplicate outputs.
     for (const [relation, cellIds] of creators) {
       if (cellIds.length > 1) {
-        // todo
+        for (const id of cellIds) {
+          const cell = this.getCell(id);
+          if (cell.type !== "code") throw new Error("unreachable");
+          clear(cell, "stale");
+          cell.graphErrors = `Relation "${relation}" is defined in multiple cells.`;
+        }
       }
     }
 
     // Check for orphaned cells.
-    for (const [id, cell] of this.codeCells()) {
+    for (const [, cell] of this.codeCells()) {
       if (cell.result.ok) {
         for (const relation of cell.result.deps) {
           if (!creators.has(relation)) {
-            // todo
+            clear(cell, "stale");
+            cell.graphErrors = `Dependency "${relation}" was not found in any cell.`;
+            break;
           }
         }
       }
     }
 
-    // Topological sorting algorithm, giving preference to non-stale cells.
+    // Asynchronously evaluate all stale cells that have dependencies met.
+    for (const [, cell] of this.codeCells()) {
+      if (
+        cell.result.ok &&
+        cell.graphErrors === undefined &&
+        cell.status === "stale"
+      ) {
+        let depsOk = true;
+        const deps: Record<string, object[]> = {};
+        for (const relation of cell.result.deps) {
+          const cellIds = creators.get(relation);
+          if (!cellIds || cellIds.length != 1) {
+            depsOk = false;
+            break;
+          }
+          const prev = this.getCell(cellIds[0]);
+          if (prev.type !== "code") throw new Error("unreachable");
+          if (
+            prev.status === "done" &&
+            prev.result.ok &&
+            prev.graphErrors === undefined &&
+            prev.runtimeErrors === undefined &&
+            prev.output?.[relation]
+          ) {
+            deps[relation] = prev.output[relation];
+          }
+        }
 
-    // Cancel past runs and start executing everything in order.
+        if (depsOk) {
+          clear(cell, "pending");
+          const promise = cell.result.evaluate(deps);
+          cell.evaluateHandle = () => promise.cancel();
+          const results = cell.result.results; // storing for async callback
+          promise
+            .then((data) => {
+              cell.output = data;
+              cell.status = "done";
+              this.markUpdate(results);
+            })
+            .catch((err: Error) => {
+              if (err.message !== "Promise was cancelled by user") {
+                cell.status = "done";
+                cell.runtimeErrors = err.message;
+                this.revalidate();
+              }
+            });
+        }
+      }
+    }
 
     this.revalidate();
   }
 
-  *[Symbol.iterator](): IterableIterator<[string, Readonly<CellState>]> {
+  private markUpdate(relations: string[]) {
+    const changed = new Set(relations);
+    for (const [, cell] of this.codeCells()) {
+      if (
+        cell.result.ok &&
+        cell.result.deps.filter((relation) => changed.has(relation)).length > 0
+      ) {
+        clear(cell, "stale");
+      }
+    }
+    this.rebuildGraph();
+  }
+
+  [Symbol.iterator](): IterableIterator<[string, Readonly<CellState>]> {
+    return this.iter();
+  }
+
+  private *iter(): IterableIterator<[string, CellState]> {
     for (const id of this.order) {
       yield [id, this.getCell(id)];
     }
   }
 
-  *codeCells(): IterableIterator<[string, Readonly<CodeCellState>]> {
-    for (const [id, cell] of this) {
+  private *codeCells(): IterableIterator<[string, CodeCellState]> {
+    for (const [id, cell] of this.iter()) {
       if (cell.type === "code") {
         yield [id, cell];
       }
@@ -200,7 +277,7 @@ export class NotebookState {
   }
 
   /** Save the notebook in a reproducible format appropriate for storage. */
-  marshal(): CellData[] {
+  marshal(): Readonly<CellData>[] {
     const data = [];
     for (const [, cell] of this) {
       data.push({
@@ -213,7 +290,7 @@ export class NotebookState {
   }
 
   /** Load a marshalled notebook. */
-  static unmarshal(data: CellData[]): NotebookState {
+  static unmarshal(data: Readonly<CellData>[]): NotebookState {
     const notebook = new NotebookState();
     for (let i = 0; i < data.length; i++) {
       notebook.insertCell(i, data[i]);

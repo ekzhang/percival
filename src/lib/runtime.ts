@@ -47,7 +47,7 @@ export function build(src: string): CompilerResult {
             worker.terminate();
           });
           worker.addEventListener("error", (event) => {
-            reject(event.error);
+            reject(new Error(event.message));
             worker.terminate();
           });
           worker.postMessage({ type: "source", code });

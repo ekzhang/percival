@@ -7,20 +7,17 @@
 
 <div class="divider">
   <hr />
-  <button
-    on:click={() => dispatch("create", { type: "markdown" })}
-    tabindex="-1"
-  >
+  <button on:click={() => dispatch("create", { type: "code" })} tabindex="-1">
     <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
-    <span>Markdown Cell</span>
+    <span>Code Cell</span>
   </button>
   <button
-    on:click={() => dispatch("create", { type: "code" })}
+    on:click={() => dispatch("create", { type: "markdown" })}
     tabindex="-1"
     class="ml-4"
   >
     <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
-    <span>Code Cell</span>
+    <span>Markdown Cell</span>
   </button>
 </div>
 
