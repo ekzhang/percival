@@ -32,7 +32,10 @@ pub fn compile(src: &str) -> CompilerResult {
         static PARSER: BoxedParser<'static, char, Program, Simple<char>> = parser();
     }
 
-    let src = format!("{}\n", src);
+    let mut src = String::from(src);
+    if !src.ends_with('\n') {
+        src += "\n";
+    }
     CompilerResult(PARSER.with(|parser| {
         parser
             .parse(&src[..])

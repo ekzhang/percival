@@ -11,18 +11,6 @@
   </div>
 {:else if state.result.ok === false}
   <pre class="error">{@html ansiToHtml(state.result.errors)}</pre>
-{:else if state.status === "pending"}
-  {#if state.output === undefined}
-    <div class="pending">
-      <div class="animate-pulse bg-blue-200 rounded-md h-6 w-3/4 mb-4" />
-      <div class="animate-pulse bg-blue-200 rounded-md h-6 w-100 mb-2" />
-      <div class="animate-pulse bg-blue-200 rounded-md h-6 w-5/6" />
-    </div>
-  {:else}
-    <div class="output stale">
-      {JSON.stringify(state.output)}
-    </div>
-  {/if}
 {:else if state.graphErrors !== undefined}
   <div class="error">
     <span class="text-red-600 font-semibold">[Graph Error]</span>
@@ -34,26 +22,55 @@
     {state.runtimeErrors}
   </div>
 {:else}
-  <div class="output" class:stale={state.status === "stale"}>
+  <div
+    class="output"
+    class:stale={state.status === "stale"}
+    class:pending={state.status === "pending"}
+  >
     {JSON.stringify(state.output)}
   </div>
 {/if}
 
 <style lang="postcss">
-  .pending {
-    @apply mb-1 p-3 rounded-sm border border-blue-200;
+  .error {
+    @apply mb-1 p-3 rounded-sm bg-pink-100 border border-pink-300;
   }
 
   .output {
     @apply mb-1 p-3 rounded-sm border border-slate-200;
   }
-
-  .stale {
-    @apply text-yellow-900 border-yellow-200 bg-yellow-50 animate-pulse;
+  .output.stale {
+    @apply border-yellow-200 animate-pulse;
+    background-image: repeating-linear-gradient(
+      45deg,
+      theme(colors.yellow.50),
+      theme(colors.yellow.50) 10px,
+      theme(colors.yellow.100) 10px,
+      theme(colors.yellow.100) 20px
+    );
+    background-size: 200% 200%;
+    animation: move-stripes 0.75s linear 0s infinite;
+  }
+  .output.pending {
+    @apply border-cyan-200 animate-pulse;
+    background-image: repeating-linear-gradient(
+      45deg,
+      theme(colors.cyan.50),
+      theme(colors.cyan.50) 10px,
+      theme(colors.cyan.100) 10px,
+      theme(colors.cyan.100) 20px
+    );
+    background-size: 200% 200%;
+    animation: move-stripes 0.75s linear 0s infinite;
   }
 
-  .error {
-    @apply mb-1 p-3 rounded-sm bg-pink-100 border border-pink-300;
+  @keyframes move-stripes {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: -28.28px 0;
+    }
   }
 
   .markdown-output {
