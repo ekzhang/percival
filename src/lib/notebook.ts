@@ -198,6 +198,9 @@ export class NotebookState {
             prev.output?.[relation]
           ) {
             deps[relation] = prev.output[relation];
+          } else {
+            depsOk = false;
+            break;
           }
         }
 

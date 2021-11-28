@@ -26,7 +26,10 @@ onmessage = (event) => {
         postMessage(results);
       })
       .catch((error: unknown) => {
-        throw error;
+        // Bubble up asynchronous errors to the global worker context.
+        setTimeout(() => {
+          throw error;
+        });
       });
   } else {
     throw new Error(`internal: unknown event type: ${event.data.type}`);
