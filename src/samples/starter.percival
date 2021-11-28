@@ -1,35 +1,7 @@
 This is a Percival notebook (https://percival.ink/).
 
-╔═╡ Code
-// Edge relation
-edge(x: 2, y: 3).
-edge(x: 3, y: 4).
-edge(x: 3, y: 5).
-
-// Transitive closure
-tc(x, y) :- edge(x, y).
-tc(x, y) :- tc(x, y: z), edge(x: z, y).
-
-╔═╡ Code
-max_n(value: 10).
-
-╔═╡ Code
-fib(n: 0, v: 0).
-fib(n: 1, v: 1).
-fib(n: `n + 1`, v: `v1 + v2`) :- fib(n, v: v1), fib(n: `n - 1`, v: v2), max_n(value), `n < value`.
-
-╔═╡ Code
-person(first: "Eric", last: "Zhang").
-person(first: "Foo", last: "Bar").
-person(first: "Baz", last: "Lam").
-
-// person(first, last) :- person(first), person(last).
-
-╔═╡ Code
-name(value: `first + " " + last`) :- person(first, last).
-
 ╔═╣ Markdown
-# A Beginner's Notebook
+# Welcome to Percival!
 
 Hello world! Welcome to my new cell :)
 
@@ -42,6 +14,38 @@ alias(X, Y) :- ld(X, A, F), alias(A, B), st(B, F, Y).
 ```
 
 The above is a code block.
+
+╔═╡ Code
+// Edge relation
+edge(x: 2, y: 3).
+edge(x: 3, y: 4).
+edge(x: 3, y: 5).
+
+// Transitive closure
+tc(x, y) :- edge(x, y).
+tc(x, y) :- tc(x, y: z), edge(x: z, y).
+
+╔═╡ Code
+max_n(value: 30).
+
+╔═╡ Code
+fib(n: 0, v: 0).
+fib(n: 1, v: 1).
+fib(n: `n + 1`, v: `v1 + v2`) :-
+  fib(n, v: v1),
+  fib(n: `n - 1`, v: v2),
+  max_n(value),
+  `n < value`.
+
+╔═╡ Code
+person(first: "Eric", last: "Zhang").
+person(first: "Foo", last: "Bar").
+person(first: "Baz", last: "Lam").
+
+// person(first, last) :- person(first), person(last).
+
+╔═╡ Code
+name(value: `first + " " + last`) :- person(first, last).
 
 ╔═╣ Markdown
 ## This is my first Percival notebook.

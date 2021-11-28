@@ -7,6 +7,8 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct Program {
     /// Rules that make up the program.
     pub rules: Vec<Rule>,
+    /// Imports prefixed with the `@import` specifier.
+    pub imports: Vec<Import>,
 }
 
 /// Represents a single Horn clause.
@@ -56,6 +58,15 @@ pub enum Literal {
     String(String),
 }
 
+/// An external import from a static JSON dataset.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Import {
+    /// Name of the relation being imported.
+    pub name: String,
+    /// Source URI of the import.
+    pub uri: String,
+}
+
 impl Program {
     /// Returns the names of all relations produced by this program.
     pub fn results(&self) -> BTreeSet<String> {
@@ -68,14 +79,27 @@ impl Program {
     /// Returns the names of all external relations that this program uses.
     pub fn deps(&self) -> BTreeSet<String> {
         let results = self.results();
+        let imports = self.imports();
         self.rules
             .iter()
             .flat_map(|rule| {
                 rule.clauses.iter().filter_map(|clause| match clause {
-                    Clause::Fact(fact) if !results.contains(&fact.name) => Some(fact.name.clone()),
+                    Clause::Fact(fact)
+                        if !results.contains(&fact.name) && !imports.contains(&fact.name) =>
+                    {
+                        Some(fact.name.clone())
+                    }
                     _ => None,
                 })
             })
+            .collect()
+    }
+
+    /// Returns the names of all external imports made by the program.
+    pub fn imports(&self) -> BTreeSet<String> {
+        self.imports
+            .iter()
+            .map(|import| import.name.clone())
             .collect()
     }
 }

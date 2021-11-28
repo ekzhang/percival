@@ -3,7 +3,7 @@
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
-use crate::ast::{Clause, Fact, Literal, Program, Rule, Value};
+use crate::ast::{Clause, Fact, Import, Literal, Program, Rule, Value};
 
 /// Constructs a parser combinator for the Percival language.
 pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
@@ -48,7 +48,6 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
             .chain::<char, _, _>(fraction)
             .chain::<char, _, _>(exponent)
             .collect()
-            .map(Literal::Number)
     };
 
     let string = {
@@ -66,13 +65,13 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
             .or(control_char)
             .repeated()
             .collect();
-        just('"')
-            .ignore_then(chars)
-            .then_ignore(just('"'))
-            .map(Literal::String)
+        just('"').ignore_then(chars).then_ignore(just('"'))
     };
 
-    let literal = number.or(string).labelled("literal");
+    let literal = number
+        .map(Literal::Number)
+        .or(string.clone().map(Literal::String))
+        .labelled("literal");
 
     let expr = just('`')
         .ignore_then(take_until(just('`')))
@@ -145,11 +144,42 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
 
+    let import = just('@')
+        .ignore_then(text::ident())
+        .try_map(|directive, span| match &directive[..] {
+            "import" => Ok(()),
+            _ => Err(Simple::custom(
+                span,
+                format!("Unknown directive \"{}\"", directive),
+            )),
+        })
+        .ignore_then(text::ident().padded().padded_by(comments))
+        .then_ignore(seq("from".chars()))
+        .then(string.padded().padded_by(comments))
+        .map(|(name, uri)| Import { name, uri });
+
+    enum Entry {
+        Rule(Rule),
+        Import(Import),
+    }
+
     let program = rule
+        .map(Entry::Rule)
+        .or(import.map(Entry::Import))
         .padded()
         .padded_by(comments)
         .repeated()
-        .map(|rules| Program { rules });
+        .map(|entries| {
+            let mut rules = Vec::new();
+            let mut imports = Vec::new();
+            for entry in entries {
+                match entry {
+                    Entry::Rule(rule) => rules.push(rule),
+                    Entry::Import(import) => imports.push(import),
+                }
+            }
+            Program { rules, imports }
+        });
 
     program
         .padded()
@@ -259,7 +289,7 @@ mod tests {
     use maplit::btreemap;
 
     use super::{format_errors, parser};
-    use crate::ast::{Clause, Fact, Literal, Program, Rule, Value};
+    use crate::ast::{Clause, Fact, Import, Literal, Program, Rule, Value};
 
     #[test]
     fn parse_single_rule() {
@@ -294,6 +324,7 @@ mod tests {
                         }),
                     ],
                 }],
+                imports: vec![],
             },
         );
     }
@@ -326,6 +357,7 @@ mod tests {
                     },
                     clauses: vec![],
                 }],
+                imports: vec![],
             },
         );
     }
@@ -385,6 +417,7 @@ tc(z) :- tc(z, &).";
                         Clause::Expr("num < 10".into()),
                     ],
                 }],
+                imports: vec![],
             },
         );
     }
@@ -442,7 +475,52 @@ hello(x: /* asdf */ 3) :-
                         props: btreemap! {},
                     })],
                 }],
+                imports: vec![],
             },
         );
+    }
+
+    #[test]
+    fn parse_imports() {
+        let parser = parser();
+        let result = parser.parse(
+            r#"
+@import hello from "https://example.com/hello.json"
+@import barley from "npm://vega-datasets/data/barley.json"
+@import football from "gh://vega/vega-datasets@next/data/football.json"
+"#
+            .trim(),
+        );
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Program {
+                rules: vec![],
+                imports: vec![
+                    Import {
+                        name: "hello".into(),
+                        uri: "https://example.com/hello.json".into()
+                    },
+                    Import {
+                        name: "barley".into(),
+                        uri: "npm://vega-datasets/data/barley.json".into()
+                    },
+                    Import {
+                        name: "football".into(),
+                        uri: "gh://vega/vega-datasets@next/data/football.json".into()
+                    },
+                ],
+            },
+        );
+    }
+
+    #[test]
+    fn parse_bad_directive() {
+        let parser = parser();
+        let text = "@bad_syntax 123";
+        let (_, errors) = parser.parse_recovery(text);
+        assert!(errors.len() == 1);
+        let message = format_errors(text, errors);
+        assert!(message.contains("Unknown directive \"bad_syntax\""));
     }
 }
