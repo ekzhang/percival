@@ -1,23 +1,24 @@
 # Percival
 
-[Percival](https://percival.ink/) is a declarative _data query and visualization
-language_. It provides a reactive, web-based notebook environment for exploring
-complex datasets, producing interactive graphics, and sharing results.
+[Percival](https://percival.ink/) is a **declarative data query and
+visualization language**. It provides a reactive, web-based notebook environment
+for exploring complex datasets, producing interactive graphics, and sharing
+results.
 
-Percival combines the interactive beauty of
-[_Vega_](https://vega.github.io/vega/)-like visualization grammars with the
-flexibility of [_Datalog_](https://en.wikipedia.org/wiki/Datalog) as a query
-language for structured, relational data. These declarative components are
-combined through a reactive dataflow system, making it easy to quickly
-investigate datasets. Because Percival is built on web technologies,
-fully-interactive notebooks can be published to anyone with access to a web
-browser, making analyses more tangible to others.
+Percival combines the flexibility of
+[_Datalog_](https://en.wikipedia.org/wiki/Datalog) as a query language for
+relational data with the interactive beauty of
+[_Vega_](https://vega.github.io/vega/)-like visualization grammars. These
+declarative components interact through a reactive dataflow system. Because
+Percival uses web technologies (including Web Workers for multithreaded,
+sandboxed execution), fully-interactive notebooks can be shared with anyone on
+the Internet, making data analyses more tangible to others.
 
-In addition to using Vega-Lite, Percival ships with a custom Datalog compiler
-that integrates with its notebook runtime. This compiles the query language to
-JavaScript through a staged evaluation process, which can be extended with
-user-provided JavaScript code. The interface aims to be lightweight, friendly,
-and accessible, and it has no hidden workspace state.
+At the core of Percival is a custom Datalog compiler, built with Rust and
+WebAssembly, which integrates with its notebook runtime. This compiles the query
+language to JavaScript through a staged evaluation process that also allows
+users to embed their own JavaScript code. The interface aims to be lightweight,
+friendly, and accessible, and there is no hidden workspace state.
 
 ## Getting Started
 

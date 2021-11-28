@@ -55,32 +55,33 @@
   <Dialog on:close={() => (about = false)}>
     <img src={logo} alt="Percival logo" class="h-12 mx-auto" />
     <p>
-      Percival is a declarative <em>data query and visualization language</em>.
-      It provides a reactive, web-based notebook environment for exploring
+      Percival is a <span class="font-semibold"
+        >declarative data query and visualization language</span
+      >. It provides a reactive, web-based notebook environment for exploring
       complex datasets, producing interactive graphics, and sharing results.
     </p>
     <p>
-      Percival combines the interactive beauty of
+      Percival combines the flexibility of <Link
+        external
+        href="https://en.wikipedia.org/wiki/Datalog"><em>Datalog</em></Link
+      > as a query language for relational data with the interactive beauty of
       <Link external href="https://vega.github.io/vega/"><em>Vega</em></Link
-      >-like visualization grammars with the flexibility of
-      <Link external href="https://en.wikipedia.org/wiki/Datalog"
-        ><em>Datalog</em></Link
-      > as a query language for structured, relational data. These declarative components
-      are combined through a reactive dataflow system, making it easy to quickly
-      investigate datasets. Because Percival is built on web technologies, fully-interactive
-      notebooks can be published to anyone with access to a web browser, making analyses
-      more tangible to others.
+      >-like visualization grammars. These declarative components interact
+      through a reactive dataflow system. Because Percival uses web technologies
+      (including Web Workers for multithreaded, sandboxed execution),
+      fully-interactive notebooks can be shared with anyone on the Internet,
+      making data analyses more tangible to others.
     </p>
     <p>
-      In addition to using Vega-Lite, Percival ships with a custom Datalog
-      compiler that integrates with its notebook runtime. This compiles the
-      query language to JavaScript through a staged evaluation process, which
-      can be extended with user-provided JavaScript code. The interface aims to
-      be lightweight, friendly, and accessible, and it has no hidden workspace
+      At the core of Percival is a custom Datalog compiler, built with Rust and
+      WebAssembly, which integrates with its notebook runtime. This compiles the
+      query language to JavaScript through a staged evaluation process that also
+      allows users to embed their own JavaScript code. The interface aims to be
+      lightweight, friendly, and accessible, and there is no hidden workspace
       state.
     </p>
     <p>
-      The code is available on GitHub at <Link
+      Percival is open-source, and the code is available on GitHub at <Link
         external
         href="https://github.com/ekzhang/percival">ekzhang/percival</Link
       >.
