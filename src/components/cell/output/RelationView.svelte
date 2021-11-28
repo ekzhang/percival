@@ -15,7 +15,7 @@
   [
   <div class="pl-[2ch]">
     {#each values.slice(0, displaying) as value}
-      <div><ValueView {name} {value} />,</div>
+      <div class="pl-[2ch]"><ValueView {name} {value} />,</div>
     {/each}
     {#if displaying < values.length}
       <button

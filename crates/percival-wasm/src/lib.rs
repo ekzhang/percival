@@ -69,11 +69,12 @@ impl CompilerResult {
         })
     }
 
-    /// Returns the names of relations that are produced by this program.
+    /// Returns the names of relations produced by this program, including imports.
     pub fn results(&self) -> Option<Vec<JsValue>> {
         self.0.as_ref().ok().map(|(prog, _)| {
             prog.results()
                 .into_iter()
+                .chain(prog.imports().into_iter())
                 .map(|s| JsValue::from_str(&s))
                 .collect()
         })

@@ -16,6 +16,11 @@ alias(X, Y) :- ld(X, A, F), alias(A, B), st(B, F, Y).
 The above is a code block.
 
 ╔═╡ Code
+@import cars from "npm://vega-datasets@2.1.0/data/cars.json"
+
+country(name: Origin) :- cars(Origin).
+
+╔═╡ Code
 // Edge relation
 edge(x: 2, y: 3).
 edge(x: 3, y: 4).

@@ -17,6 +17,18 @@ pub enum Error {
     /// A given variable was not found in context.
     #[error("Could not find definition of `{0:?}` in context")]
     UndefVar(VarId),
+
+    /// Two conflicting imports were found with the same name.
+    #[error("Multiple imports found with name \"{0}\"")]
+    DuplicateImport(String),
+
+    /// Tried to put an import on the left-hand side of a rule.
+    #[error("Imported relation \"{0}\" cannot be used as the goal of a rule")]
+    GoalImportConflict(String),
+
+    /// Import protocol not understood in directive.
+    #[error("Unknown import protocol \"{0}\"")]
+    UnknownProtocol(String),
 }
 
 /// Result returned by the compiler.
@@ -24,6 +36,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 const VAR_DEPS: &str = "__percival_deps";
 const VAR_IMMUTABLE: &str = "__percival_immutable";
+const VAR_IMPORTS: &str = "__percival_imports";
 
 const VAR_FIRST_ITERATION: &str = "__percival_first_iteration";
 const VAR_OBJ: &str = "__percival_obj";
@@ -70,6 +83,7 @@ struct Context {
     map: RedBlackTreeMap<VarId, String>,
     deps: Rc<BTreeSet<String>>,
     results: Rc<BTreeSet<String>>,
+    imports: Rc<BTreeSet<String>>,
     counter: u32,
 }
 
@@ -79,6 +93,7 @@ impl Context {
             map: RedBlackTreeMap::new(),
             deps: Rc::new(prog.deps()),
             results: Rc::new(prog.results()),
+            imports: Rc::new(prog.imports()),
             counter: 0,
         }
     }
@@ -120,8 +135,9 @@ impl Context {
 
 /// Generates a JavaScript function body that evaluates the program.
 pub fn compile(prog: &Program) -> Result<String> {
-    let ctx = make_global_context(prog);
+    let ctx = make_global_context(prog)?;
     let code = [
+        cmp_imports(prog)?,
         cmp_decls(&ctx)?,
         cmp_main_loop(&ctx, prog)?,
         cmp_output(&ctx)?,
@@ -129,8 +145,28 @@ pub fn compile(prog: &Program) -> Result<String> {
     Ok(code.join("\n"))
 }
 
-fn make_global_context(prog: &Program) -> Context {
+fn make_global_context(prog: &Program) -> Result<Context> {
     let mut ctx = Context::new(prog);
+
+    if ctx.imports.len() < prog.imports.len() {
+        // Some duplicate import during parsing, find and return it.
+        let mut names = BTreeSet::new();
+        for import in &prog.imports {
+            if names.contains(&import.name) {
+                return Err(Error::DuplicateImport(import.name.clone()));
+            }
+            names.insert(import.name.clone());
+        }
+        unreachable!("At least one import must be duplicated");
+    }
+
+    for name in Rc::clone(&ctx.imports).iter() {
+        if ctx.results.contains(name) {
+            return Err(Error::GoalImportConflict(name.clone()));
+        }
+        let set_name = ctx.gensym(name);
+        ctx = ctx.add(VarId::Set(name.clone()), set_name);
+    }
 
     for name in Rc::clone(&ctx.deps).iter() {
         let set_name = ctx.gensym(name);
@@ -154,7 +190,7 @@ fn make_global_context(prog: &Program) -> Context {
         }
     }
 
-    ctx
+    Ok(ctx)
 }
 
 fn make_indices(prog: &Program) -> BTreeSet<Index> {
@@ -193,25 +229,57 @@ fn make_indices(prog: &Program) -> BTreeSet<Index> {
         .collect()
 }
 
+fn cmp_imports(prog: &Program) -> Result<String> {
+    if prog.imports.is_empty() {
+        return Ok("".into());
+    }
+    let mut fields = Vec::new();
+    for import in &prog.imports {
+        let index = import.uri.find("://");
+        let index = index.ok_or_else(|| Error::UnknownProtocol("<none>".into()))?;
+        let (protocol, address) = import.uri.split_at(index + 3);
+        let url = match protocol {
+            "http://" | "https://" => import.uri.clone(),
+            "gh://" => format!("https://cdn.jsdelivr.net/gh/{}", address),
+            "npm://" => format!("https://cdn.jsdelivr.net/npm/{}", address),
+            _ => return Err(Error::UnknownProtocol(protocol.into())),
+        };
+        fields.push(format!(
+            "{}: await fetch(\"{}\").then(resp => resp.json()),\n",
+            import.name, url,
+        ));
+    }
+    Ok(format!(
+        "const {} = {{\n{}}};",
+        VAR_IMPORTS,
+        fields.join(""),
+    ))
+}
+
 fn cmp_decls(ctx: &Context) -> Result<String> {
     let mut decls = Vec::new();
-    for (id, js_name) in ctx.map.iter() {
+    for (id, js_name) in &ctx.map {
         match id {
             VarId::Set(name) | VarId::Update(name) => {
                 decls.push(format!("let {} = {}.Set();", js_name, VAR_IMMUTABLE));
-                if ctx.deps.contains(name) {
+                if ctx.deps.contains(name) || ctx.imports.contains(name) {
                     // Initialize sets - need to move to Immutable.Map objects.
+                    let source = if ctx.deps.contains(name) {
+                        VAR_DEPS
+                    } else {
+                        VAR_IMPORTS
+                    };
                     let init_set = format!(
                         "
 {v} = {v}.withMutations({v} => {{
-    for (const {obj} of {deps}.{name}) {{
+    for (const {obj} of {source}.{name}) {{
         {v}.add({imm}.Map({obj}));
     }}
 }});
 ",
                         v = js_name,
                         obj = VAR_OBJ,
-                        deps = VAR_DEPS,
+                        source = source,
                         imm = VAR_IMMUTABLE,
                         name = name,
                     );
@@ -220,12 +288,17 @@ fn cmp_decls(ctx: &Context) -> Result<String> {
             }
             VarId::Index(index) => {
                 decls.push(format!("let {} = {}.Map();", js_name, VAR_IMMUTABLE));
-                if ctx.deps.contains(&index.name) {
+                if ctx.deps.contains(&index.name) || ctx.imports.contains(&index.name) {
                     // Initialize index in the declarations.
+                    let source = if ctx.deps.contains(&index.name) {
+                        VAR_DEPS
+                    } else {
+                        VAR_IMPORTS
+                    };
                     let init_index = format!(
                         "
 {v} = {v}.withMutations({v} => {{
-    for (const {obj} of {deps}.{name}) {{
+    for (const {obj} of {source}.{name}) {{
         {v}.update({imm}.Map({bindings}), value => {{
             if (value === undefined) value = [];
             value.push({imm}.Map({obj}));
@@ -235,7 +308,7 @@ fn cmp_decls(ctx: &Context) -> Result<String> {
 }});",
                         v = js_name,
                         obj = VAR_OBJ,
-                        deps = VAR_DEPS,
+                        source = source,
                         imm = VAR_IMMUTABLE,
                         name = index.name,
                         bindings = cmp_object(&index.bound, |field| {
@@ -534,7 +607,13 @@ fn cmp_set_update_to_new(ctx: &Context) -> Result<String> {
 }
 
 fn cmp_output(ctx: &Context) -> Result<String> {
-    let obj = cmp_object(ctx.results.as_ref(), |name| {
+    let outputs: BTreeSet<String> = ctx
+        .results
+        .iter()
+        .chain(ctx.imports.iter())
+        .cloned()
+        .collect();
+    let obj = cmp_object(&outputs, |name| {
         Ok(format!("{}.toJS()", ctx.get(&VarId::Set(name.clone()))?))
     })?;
     Ok(format!("return {};", obj))

@@ -60,7 +60,7 @@ export function build(src: string): CompilerResult {
         return promise as EvalPromise;
       },
       deps: result.deps()!,
-      results: result.results()!,
+      results: [...result.results()!],
     };
   } else {
     return { ok: false, errors: result.err()! };

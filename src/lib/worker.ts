@@ -1,15 +1,17 @@
 import Immutable from "immutable";
 
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+
 let evaluate:
   | undefined
-  | ((deps: Record<string, object[]>) => Record<string, object[]>);
+  | ((deps: Record<string, object[]>) => Promise<Record<string, object[]>>);
 
 function initialize(js: string) {
   if (evaluate) {
     throw new Error("internal: worker was already initialized");
   }
-  const eval_fn = new Function("__percival_deps", "__percival_immutable", js);
-  evaluate = (deps: Record<string, object[]>) => eval_fn(deps, Immutable);
+  const fn = new AsyncFunction("__percival_deps", "__percival_immutable", js);
+  evaluate = (deps: Record<string, object[]>) => fn(deps, Immutable);
 }
 
 onmessage = (event) => {
@@ -19,8 +21,13 @@ onmessage = (event) => {
     if (!evaluate) {
       throw new Error("internal: worker was not initialized");
     }
-    const results = evaluate(event.data.deps);
-    postMessage(results);
+    evaluate(event.data.deps)
+      .then((results) => {
+        postMessage(results);
+      })
+      .catch((error: unknown) => {
+        throw error;
+      });
   } else {
     throw new Error(`internal: unknown event type: ${event.data.type}`);
   }
