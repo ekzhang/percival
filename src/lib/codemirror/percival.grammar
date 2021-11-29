@@ -1,0 +1,73 @@
+// Lezer LR(1) grammar for Percival, used for syntax highlighting in CodeMirror.
+
+@top Program { entry* }
+
+entry {
+  Rule |
+  Import
+}
+
+Rule {
+  Fact "." |
+  Fact ":-" (Clause ",")* Clause "."
+}
+
+Clause {
+  Fact |
+  Expr
+}
+
+Fact {
+  TableName "(" ((Prop ",")* Prop)? ")"
+}
+
+Prop {
+  PropName (":" Value)?
+}
+
+Value {
+  Identifier |
+  literal |
+  Expr
+}
+
+literal {
+  Number |
+  String
+}
+
+Import {
+  ImportKeyword TableName FromKeyword String
+}
+
+@tokens {
+  Identifier { $[a-zA-Z_] $[a-zA-Z_0-9]* }
+
+  TableName { $[a-zA-Z_] $[a-zA-Z_0-9]* }
+
+  PropName { $[a-zA-Z_] $[a-zA-Z_0-9]* }
+
+  Number { $[-+]? ($[0-9] "_"?)+ ("." ($[0-9] "_"?)+)? ($[eE] $[-+]? ($[0-9] "_"?)+)? }
+
+  String { '"' (!["\\] | "\\" _)* '"' }
+
+  Expr { "`" ![`]* "`" }
+
+  LineComment { "//" ![\n]* }
+
+  BlockComment { "/*" _*? "*/" }
+
+  space { $[ \t\n\r]+ }
+
+  "(" ")"
+
+  ":" ":-" "." ","
+
+  ImportKeyword { "@import" }
+
+  FromKeyword { "from" }
+}
+
+@skip { space | LineComment | BlockComment }
+
+@detectDelim

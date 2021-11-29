@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { EditorState, basicSetup } from "@codemirror/basic-setup";
+  import { basicSetup } from "@codemirror/basic-setup";
+  import { EditorState, Compartment } from "@codemirror/state";
   import { EditorView, KeyBinding, keymap } from "@codemirror/view";
   import { indentWithTab } from "@codemirror/commands";
   import { markdown } from "@codemirror/lang-markdown";
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
 
+  import { percival } from "@/lib/codemirror/language";
   import type { CellState } from "@/lib/notebook";
 
   const dispatch = createEventDispatcher();
@@ -15,24 +17,27 @@
 
   let editorParent: HTMLDivElement;
   let view: EditorView;
-
-  function run() {
-    dispatch("change", { value: currentValue });
-  }
+  let languageConf: Compartment;
 
   function makeRunKeyBinding(key: string): KeyBinding {
     return {
       key,
       run: () => {
-        run();
+        dispatch("change", { value: currentValue });
         return true;
       },
       preventDefault: true,
     };
   }
 
+  $: languageExtension = state.type === "markdown" ? markdown : percival;
+  $: if (view) {
+    languageConf.reconfigure(languageExtension());
+  }
+
   onMount(() => {
     currentValue = state.value;
+    languageConf = new Compartment();
     view = new EditorView({
       state: EditorState.create({
         doc: state.value,
@@ -44,7 +49,7 @@
             makeRunKeyBinding("Shift-Enter"),
             makeRunKeyBinding("Ctrl-Enter"),
           ]),
-          markdown(),
+          languageConf.of(languageExtension()),
           EditorView.updateListener.of((update) => {
             currentValue = update.state.doc.toJSON().join("\n");
           }),
