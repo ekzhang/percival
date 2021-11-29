@@ -9,6 +9,15 @@ use crate::ast::{Clause, Fact, Import, Literal, Program, Rule, Value};
 pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
     let id = text::ident().labelled("ident");
 
+    let keyword = |s: &'static str| {
+        text::ident::<char, Simple<_>>().validate(move |ident, span, emit| {
+            if ident != s {
+                emit(Simple::custom(span, "not an import statement"))
+            }
+            ident
+        })
+    };
+
     let comments = {
         let single_line = just('/')
             .then_ignore(just('/'))
@@ -68,9 +77,9 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         just('"').ignore_then(chars).then_ignore(just('"'))
     };
 
-    let boolean = seq("true".chars())
+    let boolean = keyword("true")
         .map(|_| true)
-        .or(seq("false".chars()).map(|_| false));
+        .or(keyword("false").map(|_| false));
 
     let literal = number
         .map(Literal::Number)
@@ -95,7 +104,7 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
             just(':')
                 .padded()
                 .padded_by(comments)
-                .ignore_then(value)
+                .ignore_then(value.clone())
                 .or_not(),
         )
         .try_map(|(id, value), span| {
@@ -124,10 +133,17 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .labelled("fact")
         .boxed(); // boxed to avoid rustc recursion limit
 
+    let binding = id
+        .then_ignore(just('=').padded().padded_by(comments))
+        .then(value)
+        .labelled("binding")
+        .boxed(); // boxed to avoid rustc recursion limit
+
     let clause = fact
         .clone()
         .map(Clause::Fact)
         .or(expr.map(Clause::Expr))
+        .or(binding.map(|(name, value)| Clause::Binding(name, value)))
         .labelled("clause");
 
     let rule = fact
@@ -149,9 +165,9 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
 
-    let import = seq("import".chars())
+    let import = keyword("import")
         .ignore_then(text::ident().padded().padded_by(comments))
-        .then_ignore(seq("from".chars()))
+        .then_ignore(keyword("from"))
         .then(string.padded().padded_by(comments))
         .map(|(name, uri)| Import { name, uri });
 
@@ -210,7 +226,7 @@ fn is_reserved_word(name: &str) -> bool {
         | "finally" | "super" | "with" | "continue" | "for" | "switch" | "yield" | "debugger"
         | "function" | "this" | "default" | "if" | "throw" | "delete" | "import" | "try"
         | "enum" | "await" | "implements" | "package" | "protected" | "interface" | "private"
-        | "public" | "null" | "true" | "false" => true,
+        | "public" | "null" | "true" | "false" | "let" => true,
 
         // Internal names, reserved to avoid conflicts
         _ => name.starts_with("__percival"),
@@ -549,6 +565,52 @@ import football from "gh://vega/vega-datasets@next/data/football.json"
                         },
                     },
                     clauses: vec![],
+                }],
+                imports: vec![],
+            },
+        );
+    }
+
+    #[test]
+    fn parse_import_edge_cases() {
+        let parser = parser();
+        let result = parser.parse("importhello from \"gh://hello\"");
+        assert!(result.is_err());
+
+        let result = parser.parse("importa(value: 3).");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_binding() {
+        let parser = parser();
+        let result = parser.parse(
+            r#"
+ok(val) :-
+    attempt(x),
+    val = `3 * x`.
+"#,
+        );
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Program {
+                rules: vec![Rule {
+                    goal: Fact {
+                        name: "ok".into(),
+                        props: btreemap! {
+                            "val".into() => Value::Id("val".into()),
+                        },
+                    },
+                    clauses: vec![
+                        Clause::Fact(Fact {
+                            name: "attempt".into(),
+                            props: btreemap! {
+                                "x".into() => Value::Id("x".into()),
+                            },
+                        }),
+                        Clause::Binding("val".into(), Value::Expr("3 * x".into())),
+                    ],
                 }],
                 imports: vec![],
             },

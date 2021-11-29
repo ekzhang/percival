@@ -181,9 +181,10 @@ name(value: \`first + " " + last\`) :- person(first, last).
 fib(n: 0, x: 0).
 fib(n: 1, x: 1).
 fib(n: \`n + 1\`, x: \`x1 + x2\`) :-
-    fib(n, x: x1),
-    fib(n: \`n - 1\`, x: x2),
-    \`n < 10\`.
+  fib(n, x: x1),
+  fib(n: \`n - 1\`, x: x2),
+  x = \`x1 + x2\`,
+  \`n < 10\`.
 `,
       deps: [],
       results: ["fib"],

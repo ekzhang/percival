@@ -11,7 +11,7 @@ import { styleTags, tags as t } from "@codemirror/highlight";
 let parserWithMetadata = parser.configure({
   props: [
     styleTags({
-      Identifier: t.local(t.variableName),
+      LocalName: t.local(t.variableName),
       TableName: t.definition(t.variableName),
       PropName: t.definition(t.propertyName),
       String: t.string,
@@ -24,10 +24,7 @@ let parserWithMetadata = parser.configure({
       FromKeyword: t.keyword,
       Goal: t.string,
       "( )": t.paren,
-      ":-": t.punctuation,
-      ".": t.punctuation,
-      ":": t.punctuation,
-      ",": t.punctuation,
+      ":- . : , =": t.punctuation,
     }),
     indentNodeProp.add({
       Rule: (context) => context.column(context.node.from) + context.unit,

@@ -14,19 +14,24 @@ Rule {
 
 Clause {
   Fact |
-  Expr
+  Expr |
+  Binding
 }
 
 Fact {
-  TableName "(" ((Prop ",")* Prop)? ")"
+  TableName { identifier } "(" ((Prop ",")* Prop)? ")"
+}
+
+Binding {
+  LocalName { identifier } "=" Value
 }
 
 Prop {
-  PropName (":" Value)?
+  PropName { identifier } (":" Value)?
 }
 
 Value {
-  Identifier |
+  LocalName { identifier } |
   literal |
   Expr
 }
@@ -35,21 +40,17 @@ literal {
   Number |
   String |
   Boolean {
-    @specialize<Identifier, "true"> |
-    @specialize<Identifier, "false">
+    @specialize<identifier, "true"> |
+    @specialize<identifier, "false">
   }
 }
 
 Import {
-  ImportKeyword { @specialize<TableName, "import"> } TableName FromKeyword String
+  ImportKeyword { @specialize<identifier, "import"> } TableName { identifier } FromKeyword String
 }
 
 @tokens {
-  Identifier { $[a-zA-Z_] $[a-zA-Z_0-9]* }
-
-  TableName { $[a-zA-Z_] $[a-zA-Z_0-9]* }
-
-  PropName { $[a-zA-Z_] $[a-zA-Z_0-9]* }
+  identifier { $[a-zA-Z_] $[a-zA-Z_0-9]* }
 
   Number { $[-+]? ($[0-9] "_"?)+ ("." ($[0-9] "_"?)+)? ($[eE] $[-+]? ($[0-9] "_"?)+)? }
 
@@ -65,7 +66,7 @@ Import {
 
   "(" ")"
 
-  ":" ":-" "." ","
+  ":" ":-" "." "," "="
 
   FromKeyword { "from" }
 }

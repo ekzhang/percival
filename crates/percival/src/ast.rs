@@ -25,8 +25,10 @@ pub struct Rule {
 pub enum Clause {
     /// Tail fact assumption of the rule.
     Fact(Fact),
-    /// A raw JavaScript conditional expression between backticks.
+    /// Raw JavaScript conditional expression between backticks.
     Expr(String),
+    /// Local variable binding within a rule.
+    Binding(String, Value),
 }
 
 /// Literal part of a Horn clause, written in terms of relations.

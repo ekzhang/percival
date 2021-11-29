@@ -29,6 +29,10 @@ pub enum Error {
     /// Import protocol not understood in directive.
     #[error("Unknown import protocol \"{0}\"")]
     UnknownProtocol(String),
+
+    /// Two conflicting variables were defined with the same name.
+    #[error("Conflicting declaration of variable \"{0}\"")]
+    DuplicateVariable(String),
 }
 
 /// Result returned by the compiler.
@@ -570,7 +574,17 @@ for (const {obj} of {index}.get({imm}.Map({bindings})) ?? []) {{
 
         Clause::Expr(expr) => {
             assert!(!only_update);
-            Ok(format!("if ({}) {{\n", expr))
+            Ok(format!("if ({}) {{", expr))
+        }
+
+        Clause::Binding(name, value) => {
+            assert!(!only_update);
+            let key = VarId::Var(name.clone());
+            if ctx.map.contains_key(&key) {
+                return Err(Error::DuplicateVariable(name.clone()));
+            }
+            *ctx = ctx.add(VarId::Var(name.clone()), name.clone());
+            Ok(format!("{{\nconst {} = {};", name, cmp_value(ctx, value)?))
         }
     }
 }
