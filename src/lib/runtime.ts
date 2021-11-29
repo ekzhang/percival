@@ -1,5 +1,5 @@
 import { compile } from "percival-wasm";
-import Worker from "./worker?worker";
+import Worker from "./worker?worker&inline";
 
 // Needed to fix dependency pre-bundling issue in mocha-vite-puppeteer.
 //
