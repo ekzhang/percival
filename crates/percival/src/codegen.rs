@@ -587,6 +587,7 @@ fn cmp_value(ctx: &Context, value: &Value) -> Result<String> {
         Value::Id(id) => ctx.get(&VarId::Var(id.clone()))?,
         Value::Literal(Literal::Number(n)) => n.clone(),
         Value::Literal(Literal::String(s)) => format!("\"{}\"", s),
+        Value::Literal(Literal::Boolean(b)) => b.to_string(),
         Value::Expr(e) => e.clone(),
     })
 }

@@ -16,6 +16,7 @@ let parserWithMetadata = parser.configure({
       PropName: t.definition(t.propertyName),
       String: t.string,
       Number: t.number,
+      Boolean: t.bool,
       Expr: [t.regexp, t.emphasis],
       LineComment: t.lineComment,
       BlockComment: t.blockComment,

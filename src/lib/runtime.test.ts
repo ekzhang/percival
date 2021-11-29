@@ -132,6 +132,19 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
       },
     });
   });
+
+  it("can handle boolean literals", async () => {
+    await init();
+    await checkProgram({
+      src: `ok(x: true, y: false).`,
+      deps: [],
+      results: ["ok"],
+      input: {},
+      output: {
+        ok: [{ x: true, y: false }],
+      },
+    });
+  });
 });
 
 describe("embedded backtick expressions", () => {

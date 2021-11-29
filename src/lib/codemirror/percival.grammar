@@ -33,7 +33,13 @@ Value {
 
 literal {
   Number |
-  String
+  String |
+  Boolean
+}
+
+Boolean {
+  @specialize<Identifier, "true"> |
+  @specialize<Identifier, "false">
 }
 
 Import {

@@ -56,6 +56,8 @@ pub enum Literal {
     Number(String),
     /// A string literal, with escape sequences unevaluated.
     String(String),
+    /// A boolean literal in simplest form.
+    Boolean(bool),
 }
 
 /// An external import from a static JSON dataset.

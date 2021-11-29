@@ -68,9 +68,14 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         just('"').ignore_then(chars).then_ignore(just('"'))
     };
 
+    let boolean = seq("true".chars())
+        .map(|_| true)
+        .or(seq("false".chars()).map(|_| false));
+
     let literal = number
         .map(Literal::Number)
         .or(string.clone().map(Literal::String))
+        .or(boolean.map(Literal::Boolean))
         .labelled("literal");
 
     let expr = just('`')
@@ -79,10 +84,10 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .collect()
         .labelled("expr");
 
-    let value = id
-        .map(Value::Id)
-        .or(literal.map(Value::Literal))
+    let value = literal
+        .map(Value::Literal)
         .or(expr.map(Value::Expr))
+        .or(id.map(Value::Id))
         .labelled("value");
 
     let prop = id
@@ -522,5 +527,28 @@ hello(x: /* asdf */ 3) :-
         assert!(errors.len() == 1);
         let message = format_errors(text, errors);
         assert!(message.contains("Unknown directive \"bad_syntax\""));
+    }
+
+    #[test]
+    fn parse_boolean() {
+        let parser = parser();
+        let result = parser.parse("hello(x: true, y: false).");
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Program {
+                rules: vec![Rule {
+                    goal: Fact {
+                        name: "hello".into(),
+                        props: btreemap! {
+                            "x".into() => Value::Literal(Literal::Boolean(true)),
+                            "y".into() => Value::Literal(Literal::Boolean(false)),
+                        },
+                    },
+                    clauses: vec![],
+                }],
+                imports: vec![],
+            },
+        );
     }
 }
