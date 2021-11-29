@@ -16,7 +16,7 @@
   >
     <slot />
     <button
-      class="w-full p-1.5 rounded-md border text-sm text-gray-600 hover:text-black hover:bg-gray-100 transition-colors"
+      class="w-full p-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-black active:bg-gray-200 active:text-black transition-colors"
       on:click={() => dispatch("close")}
     >
       Close this message
