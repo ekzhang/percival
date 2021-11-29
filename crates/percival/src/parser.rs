@@ -149,19 +149,22 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
 
-    let import = just('@')
-        .ignore_then(text::ident())
-        .try_map(|directive, span| match &directive[..] {
-            "import" => Ok(()),
-            _ => Err(Simple::custom(
-                span,
-                format!("Unknown directive \"{}\"", directive),
-            )),
-        })
+    let import = seq("import".chars())
         .ignore_then(text::ident().padded().padded_by(comments))
         .then_ignore(seq("from".chars()))
         .then(string.padded().padded_by(comments))
         .map(|(name, uri)| Import { name, uri });
+
+    // let directive =
+    //     just('@')
+    //         .ignore_then(text::ident())
+    //         .try_map(|directive, span| match &directive[..] {
+    //             "mark_bar" | "mark_point" => Ok(directive),
+    //             _ => Err(Simple::custom(
+    //                 span,
+    //                 format!("Unknown directive \"{}\"", directive),
+    //             )),
+    //         });
 
     enum Entry {
         Rule(Rule),
@@ -490,9 +493,9 @@ hello(x: /* asdf */ 3) :-
         let parser = parser();
         let result = parser.parse(
             r#"
-@import hello from "https://example.com/hello.json"
-@import barley from "npm://vega-datasets/data/barley.json"
-@import football from "gh://vega/vega-datasets@next/data/football.json"
+import hello from "https://example.com/hello.json"
+import barley from "npm://vega-datasets/data/barley.json"
+import football from "gh://vega/vega-datasets@next/data/football.json"
 "#
             .trim(),
         );
@@ -519,15 +522,15 @@ hello(x: /* asdf */ 3) :-
         );
     }
 
-    #[test]
-    fn parse_bad_directive() {
-        let parser = parser();
-        let text = "@bad_syntax 123";
-        let (_, errors) = parser.parse_recovery(text);
-        assert!(errors.len() == 1);
-        let message = format_errors(text, errors);
-        assert!(message.contains("Unknown directive \"bad_syntax\""));
-    }
+    // #[test]
+    // fn parse_bad_directive() {
+    //     let parser = parser();
+    //     let text = "@bad_syntax 123";
+    //     let (_, errors) = parser.parse_recovery(text);
+    //     assert!(errors.len() == 1);
+    //     let message = format_errors(text, errors);
+    //     assert!(message.contains("Unknown directive \"bad_syntax\""));
+    // }
 
     #[test]
     fn parse_boolean() {

@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct Program {
     /// Rules that make up the program.
     pub rules: Vec<Rule>,
-    /// Imports prefixed with the `@import` specifier.
+    /// Imports prefixed with the `import` keyword.
     pub imports: Vec<Import>,
 }
 

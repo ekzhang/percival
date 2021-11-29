@@ -1,1 +1,1 @@
-@import cars from "npm://vega-datasets/data/cars.json"
+import cars from "npm://vega-datasets/data/cars.json"

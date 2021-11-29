@@ -228,7 +228,7 @@ describe("import directives", () => {
   it("can load vega-datasets/crimea", async () => {
     await init();
     await checkProgram({
-      src: `@import crimea from "npm://vega-datasets@2.1.0/data/crimea.json"`,
+      src: `import crimea from "npm://vega-datasets@2.1.0/data/crimea.json"`,
       deps: [],
       results: ["crimea"],
       input: {},

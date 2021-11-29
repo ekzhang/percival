@@ -34,16 +34,14 @@ Value {
 literal {
   Number |
   String |
-  Boolean
-}
-
-Boolean {
-  @specialize<Identifier, "true"> |
-  @specialize<Identifier, "false">
+  Boolean {
+    @specialize<Identifier, "true"> |
+    @specialize<Identifier, "false">
+  }
 }
 
 Import {
-  ImportKeyword TableName FromKeyword String
+  ImportKeyword { @specialize<TableName, "import"> } TableName FromKeyword String
 }
 
 @tokens {
@@ -68,8 +66,6 @@ Import {
   "(" ")"
 
   ":" ":-" "." ","
-
-  ImportKeyword { "@import" }
 
   FromKeyword { "from" }
 }
