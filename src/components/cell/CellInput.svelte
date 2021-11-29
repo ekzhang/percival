@@ -19,11 +19,15 @@
   let view: EditorView;
   let languageConf: Compartment;
 
+  function dispatchChange() {
+    dispatch("change", { value: currentValue });
+  }
+
   function makeRunKeyBinding(key: string): KeyBinding {
     return {
       key,
       run: () => {
-        dispatch("change", { value: currentValue });
+        dispatchChange();
         return true;
       },
       preventDefault: true,
@@ -52,6 +56,9 @@
           languageConf.of(languageExtension()),
           EditorView.updateListener.of((update) => {
             currentValue = update.state.doc.toJSON().join("\n");
+            if (state.type === "markdown") {
+              dispatchChange();
+            }
           }),
         ],
       }),
