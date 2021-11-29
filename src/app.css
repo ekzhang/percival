@@ -9,8 +9,8 @@
 }
 
 .cm-editor .cm-scroller {
-  font-size: 0.9rem;
-  @apply font-mono bg-zinc-100 rounded-sm border border-zinc-200 transition-colors;
+  font-size: 0.95rem;
+  @apply font-mono bg-zinc-50 rounded-sm border border-zinc-200 transition-colors;
 }
 
 .cm-editor .cm-scroller .cm-activeLine {
@@ -26,8 +26,12 @@
   display: none;
 }
 
+.cm-editor .cm-lineNumbers {
+  @apply bg-zinc-100;
+}
+
 .cm-editor .cm-lineNumbers .cm-gutterElement {
-  display: none;
+  @apply mr-1 bg-transparent;
 }
 
 .cm-editor .cm-content {
@@ -35,9 +39,5 @@
 }
 
 .cm-editor .cm-line {
-  @apply border-transparent border-l-4 pl-3 pr-2 transition-colors;
-}
-
-.cm-editor .cm-line.cm-activeLine {
-  @apply border-zinc-300;
+  @apply border-transparent border-l-4 px-2 transition-colors;
 }

@@ -70,8 +70,8 @@
   .dirty :global(.cm-editor .cm-scroller) {
     @apply border-orange-200 bg-orange-50;
   }
-  .dirty :global(.cm-editor .cm-line) {
-    @apply border-orange-100;
+  .dirty :global(.cm-editor .cm-lineNumbers) {
+    @apply bg-orange-100;
   }
   .dirty :global(.cm-editor .cm-line.cm-activeLine) {
     @apply border-orange-300;
