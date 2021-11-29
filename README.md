@@ -20,6 +20,10 @@ language to JavaScript through a staged evaluation process that also allows
 users to embed their own JavaScript code. The interface aims to be lightweight,
 friendly, and accessible, and there is no hidden workspace state.
 
+This is an early-stage research project, and we welcome your feedback, so please
+feel free to say hello at our
+[discussions page](https://github.com/ekzhang/percival/discussions)!
+
 ## Getting Started
 
 Building Percival from scratch requires [Node v16+](https://nodejs.org/en/),
