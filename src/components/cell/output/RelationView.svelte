@@ -8,7 +8,7 @@
   $: displaying = Math.min(values.length, 5); // hide long lists
 </script>
 
-<div class="font-mono text-gray-700">
+<div class="font-mono text-[0.95rem] text-gray-700">
   <span class="text-gray-500">Table</span>&lbrace;<span class="font-bold"
     >{name}</span
   >&rbrace; <span class="text-gray-400">:=</span>

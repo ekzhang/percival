@@ -25,6 +25,7 @@
     />
   {/each}
   <CellDivider
+    visible={notebook.length === 0}
     on:create={(event) => {
       notebook.addCell({
         type: event.detail.type,

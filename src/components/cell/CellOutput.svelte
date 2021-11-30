@@ -36,11 +36,11 @@
 
 <style lang="postcss">
   .error {
-    @apply mb-1 p-3 rounded-sm bg-pink-100 border border-pink-300 font-mono;
+    @apply mb-1 p-3 rounded-sm bg-pink-100 font-mono;
   }
 
   .output {
-    @apply mb-1 p-3 rounded-sm border border-slate-200;
+    @apply p-3 rounded-sm;
   }
   .output.stale {
     @apply border-yellow-200 opacity-50;
@@ -77,7 +77,7 @@
   }
 
   .markdown-output {
-    @apply px-2.5 font-serif text-base max-w-2xl leading-snug;
+    @apply px-2.5 font-serif text-base text-[1.02rem] max-w-2xl leading-snug;
   }
 
   .markdown-output :global(h1) {
