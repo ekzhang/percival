@@ -40,6 +40,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 const VAR_DEPS: &str = "__percival_deps";
 const VAR_IMMUTABLE: &str = "__percival_immutable";
+const VAR_AGGREGATES: &str = "__percival_aggregates";
 const VAR_IMPORTS: &str = "__percival_imports";
 
 const VAR_FIRST_ITERATION: &str = "__percival_first_iteration";
@@ -132,7 +133,7 @@ impl Context {
     fn is_bound(&self, value: &Value) -> bool {
         match value {
             Value::Id(id) => self.map.contains_key(&VarId::Var(id.clone())),
-            Value::Literal(_) | Value::Expr(_) => true,
+            Value::Literal(_) | Value::Expr(_) | Value::Aggregate(_) => true,
         }
     }
 }
@@ -215,7 +216,7 @@ fn make_indices(prog: &Program) -> BTreeSet<Index> {
                                     vars.insert(id);
                                 }
                             }
-                            Value::Literal(_) | Value::Expr(_) => {
+                            Value::Literal(_) | Value::Expr(_) | Value::Aggregate(_) => {
                                 bound.insert(key.to_owned());
                             }
                         }
@@ -519,7 +520,7 @@ fn cmp_clause(ctx: &mut Context, clause: &Clause, only_update: bool) -> Result<S
                             setters.push(format!("const {} = {}.get('{}');", name, VAR_OBJ, key));
                             *ctx = ctx.add(VarId::Var(id.clone()), name);
                         }
-                        Value::Literal(_) | Value::Expr(_) => {
+                        Value::Literal(_) | Value::Expr(_) | Value::Aggregate(_) => {
                             unreachable!("literal and expression values are always bound")
                         }
                     }
@@ -602,7 +603,8 @@ fn cmp_value(ctx: &Context, value: &Value) -> Result<String> {
         Value::Literal(Literal::Number(n)) => n.clone(),
         Value::Literal(Literal::String(s)) => format!("\"{}\"", s),
         Value::Literal(Literal::Boolean(b)) => b.to_string(),
-        Value::Expr(e) => e.clone(),
+        Value::Expr(e) => format!("({})", e),
+        Value::Aggregate(_) => todo!(),
     })
 }
 

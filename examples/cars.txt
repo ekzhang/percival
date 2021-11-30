@@ -1,1 +1,9 @@
 import cars from "npm://vega-datasets/data/cars.json"
+
+year(year: Year) :- cars(Year).
+
+yearly_mpg(year, value) :-
+  year(year),
+  value = mean[Miles_per_Gallon] {
+    cars(Year: year, Miles_per_Gallon)
+  }.

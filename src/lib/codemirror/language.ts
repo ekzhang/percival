@@ -23,7 +23,10 @@ let parserWithMetadata = parser.configure({
       ImportKeyword: t.keyword,
       FromKeyword: t.keyword,
       Goal: t.string,
+      Operator: t.className,
       "( )": t.paren,
+      "[ ]": t.bracket,
+      "{ }": t.brace,
       ":- . : , =": t.punctuation,
     }),
     indentNodeProp.add({

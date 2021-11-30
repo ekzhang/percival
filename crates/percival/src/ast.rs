@@ -49,6 +49,8 @@ pub enum Value {
     Literal(Literal),
     /// A raw JavaScript expression between backticks.
     Expr(String),
+    /// A custom aggregate operation over a subquery.
+    Aggregate(Aggregate),
 }
 
 /// Literal values supported by the Percival grammar.
@@ -60,6 +62,17 @@ pub enum Literal {
     String(String),
     /// A boolean literal in simplest form.
     Boolean(bool),
+}
+
+/// An aggregate operation over stratified dependency relations.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Aggregate {
+    /// Name of the aggregate operator, such as `min` or `sum`.
+    pub operator: String,
+    /// Value being aggregated.
+    pub value: Box<Value>,
+    /// List of clauses to treat as a subquery for the aggregate.
+    pub subquery: Vec<Clause>,
 }
 
 /// An external import from a static JSON dataset.

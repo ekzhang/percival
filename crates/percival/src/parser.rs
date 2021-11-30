@@ -3,7 +3,7 @@
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
-use crate::ast::{Clause, Fact, Import, Literal, Program, Rule, Value};
+use crate::ast::{Aggregate, Clause, Fact, Import, Literal, Program, Rule, Value};
 
 /// Constructs a parser combinator for the Percival language.
 pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
@@ -93,11 +93,39 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .collect()
         .labelled("expr");
 
-    let value = literal
-        .map(Value::Literal)
-        .or(expr.map(Value::Expr))
-        .or(id.map(Value::Id))
-        .labelled("value");
+    // Declared here so that we can use it for aggregate subqueries.
+    let mut clauses = Recursive::<_, Vec<Clause>, Simple<char>>::declare();
+
+    let value = recursive(|value| {
+        let aggregate = text::ident()
+            .then(
+                value
+                    .padded()
+                    .padded_by(comments)
+                    .delimited_by('[', ']')
+                    .padded()
+                    .padded_by(comments),
+            )
+            .then(
+                clauses
+                    .clone()
+                    .padded()
+                    .padded_by(comments)
+                    .delimited_by('{', '}'),
+            )
+            .map(|((operator, value), subquery)| Aggregate {
+                operator,
+                value: Box::new(value),
+                subquery,
+            });
+
+        literal
+            .map(Value::Literal)
+            .or(expr.map(Value::Expr))
+            .or(aggregate.map(Value::Aggregate))
+            .or(id.map(Value::Id))
+            .labelled("value")
+    });
 
     let prop = id
         .then(
@@ -136,8 +164,7 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
     let binding = id
         .then_ignore(just('=').padded().padded_by(comments))
         .then(value)
-        .labelled("binding")
-        .boxed(); // boxed to avoid rustc recursion limit
+        .labelled("binding");
 
     let clause = fact
         .clone()
@@ -146,12 +173,20 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .or(binding.map(|(name, value)| Clause::Binding(name, value)))
         .labelled("clause");
 
+    clauses.define(
+        clause
+            .clone()
+            .padded()
+            .padded_by(comments)
+            .separated_by(just(',')),
+    );
+
     let rule = fact
         .then(
             seq(":-".chars())
                 .padded()
                 .padded_by(comments)
-                .ignore_then(clause.padded().padded_by(comments).separated_by(just(',')))
+                .ignore_then(clauses)
                 .then_ignore(just('.'))
                 .try_map(|clauses, span| {
                     if clauses.is_empty() {
@@ -313,7 +348,7 @@ mod tests {
     use maplit::btreemap;
 
     use super::{format_errors, parser};
-    use crate::ast::{Clause, Fact, Import, Literal, Program, Rule, Value};
+    use crate::ast::{Aggregate, Clause, Fact, Import, Literal, Program, Rule, Value};
 
     #[test]
     fn parse_single_rule() {
@@ -610,6 +645,57 @@ ok(val) :-
                             },
                         }),
                         Clause::Binding("val".into(), Value::Expr("3 * x".into())),
+                    ],
+                }],
+                imports: vec![],
+            },
+        );
+    }
+
+    #[test]
+    fn parse_aggregate() {
+        let parser = parser();
+        let result = parser.parse(
+            r#"
+ok(value) :-
+    year(year),
+    value = mean[mpg] {
+        cars(Year: year, mpg)
+    }.
+"#,
+        );
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Program {
+                rules: vec![Rule {
+                    goal: Fact {
+                        name: "ok".into(),
+                        props: btreemap! {
+                            "value".into() => Value::Id("value".into()),
+                        },
+                    },
+                    clauses: vec![
+                        Clause::Fact(Fact {
+                            name: "year".into(),
+                            props: btreemap! {
+                                "year".into() => Value::Id("year".into()),
+                            },
+                        }),
+                        Clause::Binding(
+                            "value".into(),
+                            Value::Aggregate(Aggregate {
+                                operator: "mean".into(),
+                                value: Box::new(Value::Id("mpg".into())),
+                                subquery: vec![Clause::Fact(Fact {
+                                    name: "cars".into(),
+                                    props: btreemap! {
+                                        "Year".into() => Value::Id("year".into()),
+                                        "mpg".into() => Value::Id("mpg".into()),
+                                    },
+                                }),],
+                            }),
+                        ),
                     ],
                 }],
                 imports: vec![],

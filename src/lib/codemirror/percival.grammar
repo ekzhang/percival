@@ -9,7 +9,11 @@ entry {
 
 Rule {
   Fact "." |
-  Fact ":-" (Clause ",")* Clause "."
+  Fact ":-" clauses "."
+}
+
+clauses {
+  (Clause ",")* Clause
 }
 
 Clause {
@@ -33,7 +37,8 @@ Prop {
 Value {
   LocalName { identifier } |
   literal |
-  Expr
+  Expr |
+  Aggregate
 }
 
 literal {
@@ -43,6 +48,10 @@ literal {
     @specialize<identifier, "true"> |
     @specialize<identifier, "false">
   }
+}
+
+Aggregate {
+  Operator { identifier } "[" Value "]" "{" clauses "}"
 }
 
 Import {
@@ -64,7 +73,7 @@ Import {
 
   space { $[ \t\n\r]+ }
 
-  "(" ")"
+  "(" ")" "[" "]" "{" "}"
 
   ":" ":-" "." "," "="
 
