@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { build } from "./runtime";
 import type { CompilerResult } from "./runtime";
+import { buildPlot } from "./plot";
+import type { PlotResult } from "./plot";
 
 export type MarkdownCell = {
   type: "markdown";
@@ -14,7 +16,13 @@ export type CodeCellData = {
   value: string;
 };
 
-export type CellData = MarkdownCell | CodeCellData;
+export type PlotCellData = {
+  type: "plot";
+  hidden: boolean;
+  value: string;
+};
+
+export type CellData = MarkdownCell | CodeCellData | PlotCellData;
 
 export type CodeCellState = CodeCellData & {
   result: CompilerResult;
@@ -25,9 +33,21 @@ export type CodeCellState = CodeCellData & {
   evaluateHandle?: () => void;
 };
 
-export type CellState = MarkdownCell | CodeCellState;
+export type PlotCellState = PlotCellData & {
+  result: PlotResult;
+  status: "stale" | "pending" | "done";
+  output?: string;
+  graphErrors?: string;
+  runtimeErrors?: string;
+  evaluateHandle?: () => void;
+};
 
-function clear(cell: CodeCellState, status: CodeCellState["status"]) {
+export type CellState = MarkdownCell | CodeCellState | PlotCellState;
+
+function clear(
+  cell: CodeCellState | PlotCellState,
+  status: CodeCellState["status"],
+) {
   cell.evaluateHandle?.(); // cancel evaluation
   cell.graphErrors = cell.runtimeErrors = cell.evaluateHandle = undefined;
   cell.status = status;
@@ -72,10 +92,16 @@ export class NotebookState {
     this.order.splice(index, 0, id);
     if (cell.type === "markdown") {
       this.cells.set(id, cell);
-    } else {
+    } else if (cell.type === "code") {
       this.cells.set(id, {
         ...cell,
         result: build(cell.value),
+        status: "stale",
+      });
+    } else {
+      this.cells.set(id, {
+        ...cell,
+        result: buildPlot(cell.value),
         status: "stale",
       });
     }
@@ -97,6 +123,10 @@ export class NotebookState {
     if (cell.type === "code") {
       clear(cell, "stale");
       cell.result = build(value);
+      this.rebuildGraph();
+    } else if (cell.type === "plot") {
+      clear(cell, "stale");
+      cell.result = buildPlot(value);
       this.rebuildGraph();
     } else {
       this.revalidate();
@@ -135,11 +165,11 @@ export class NotebookState {
     // For each relation, a list of all cells that create that relation.
     const creators = new Map<string, string[]>();
 
-    for (const [id, cell] of this.codeCells()) {
+    for (const [id, cell] of this.executableCells()) {
       if (cell.graphErrors !== undefined) {
         delete cell.graphErrors;
       }
-      if (cell.result.ok) {
+      if (cell.result.ok && cell.type === "code") {
         for (const relation of cell.result.results) {
           const array = creators.get(relation) ?? [];
           array.push(id);
@@ -161,7 +191,7 @@ export class NotebookState {
     }
 
     // Check for orphaned cells.
-    for (const [, cell] of this.codeCells()) {
+    for (const [, cell] of this.executableCells()) {
       if (cell.result.ok) {
         for (const relation of cell.result.deps) {
           if (!creators.has(relation)) {
@@ -174,7 +204,7 @@ export class NotebookState {
     }
 
     // Asynchronously evaluate all stale cells that have dependencies met.
-    for (const [, cell] of this.codeCells()) {
+    for (const [, cell] of this.executableCells()) {
       if (
         cell.result.ok &&
         cell.graphErrors === undefined &&
@@ -206,22 +236,40 @@ export class NotebookState {
 
         if (depsOk) {
           clear(cell, "pending");
-          const promise = cell.result.evaluate(deps);
-          cell.evaluateHandle = () => promise.cancel();
-          const results = cell.result.results; // storing for async callback
-          promise
-            .then((data) => {
-              cell.output = data;
-              cell.status = "done";
-              this.markUpdate(results);
-            })
-            .catch((err: Error) => {
-              if (err.message !== "Promise was cancelled by user") {
+          if (cell.type === "code") {
+            const promise = cell.result.evaluate(deps);
+            cell.evaluateHandle = () => promise.cancel();
+            const results = cell.result.results; // storing for async callback
+            promise
+              .then((data) => {
+                cell.output = data;
                 cell.status = "done";
-                cell.runtimeErrors = err.message;
+                this.markUpdate(results);
+              })
+              .catch((err: Error) => {
+                if (err.message !== "Promise was cancelled by user") {
+                  cell.status = "done";
+                  cell.runtimeErrors = err.message;
+                  this.revalidate();
+                }
+              });
+          } else {
+            const promise = cell.result.evaluate(deps[cell.result.deps[0]]);
+            cell.evaluateHandle = () => promise.cancel();
+            promise
+              .then((figure) => {
+                cell.output = figure;
+                cell.status = "done";
                 this.revalidate();
-              }
-            });
+              })
+              .catch((err: Error) => {
+                if (err.message !== "Promise was cancelled by user") {
+                  cell.status = "done";
+                  cell.runtimeErrors = err.message;
+                  this.revalidate();
+                }
+              });
+          }
         }
       }
     }
@@ -231,7 +279,7 @@ export class NotebookState {
 
   private markUpdate(relations: string[]) {
     const changed = new Set(relations);
-    for (const [, cell] of this.codeCells()) {
+    for (const [, cell] of this.executableCells()) {
       if (
         cell.result.ok &&
         cell.result.deps.filter((relation) => changed.has(relation)).length > 0
@@ -252,9 +300,11 @@ export class NotebookState {
     }
   }
 
-  private *codeCells(): IterableIterator<[string, CodeCellState]> {
+  private *executableCells(): IterableIterator<
+    [string, CodeCellState | PlotCellState]
+  > {
     for (const [id, cell] of this.iter()) {
-      if (cell.type === "code") {
+      if (cell.type === "code" || cell.type === "plot") {
         yield [id, cell];
       }
     }

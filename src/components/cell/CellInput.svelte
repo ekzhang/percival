@@ -4,6 +4,7 @@
   import { EditorView, KeyBinding, keymap } from "@codemirror/view";
   import { indentWithTab } from "@codemirror/commands";
   import { markdown } from "@codemirror/lang-markdown";
+  import { javascript } from "@codemirror/lang-javascript";
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
 
   import { percival } from "@/lib/codemirror/language";
@@ -34,9 +35,13 @@
     };
   }
 
-  $: languageExtension = state.type === "markdown" ? markdown : percival;
+  const languageExtensions = {
+    markdown: markdown,
+    code: percival,
+    plot: javascript,
+  };
   $: if (view) {
-    languageConf.reconfigure(languageExtension());
+    languageConf.reconfigure(languageExtensions[state.type]());
   }
 
   onMount(() => {
@@ -53,7 +58,7 @@
             makeRunKeyBinding("Shift-Enter"),
             makeRunKeyBinding("Ctrl-Enter"),
           ]),
-          languageConf.of(languageExtension()),
+          languageConf.of(languageExtensions[state.type]()),
           EditorView.updateListener.of((update) => {
             currentValue = update.state.doc.toJSON().join("\n");
             if (state.type === "markdown") {

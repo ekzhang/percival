@@ -2,6 +2,7 @@
   import type { CellState } from "@/lib/notebook";
   import { ansiToHtml, markdownToHtml } from "@/lib/text";
   import FullView from "./output/FullView.svelte";
+  import PlotView from "./output/PlotView.svelte";
 
   export let state: CellState;
 </script>
@@ -11,7 +12,14 @@
     {@html markdownToHtml(state.value)}
   </div>
 {:else if state.result.ok === false}
-  <pre class="error">{@html ansiToHtml(state.result.errors)}</pre>
+  {#if state.type === "code"}
+    <pre class="error">{@html ansiToHtml(state.result.errors)}</pre>
+  {:else}
+    <div class="error">
+      <span class="text-red-700">Error:</span>
+      {state.result.error}
+    </div>
+  {/if}
 {:else if state.graphErrors !== undefined}
   <div class="error">
     <span class="text-red-700">Graph Error:</span>
@@ -29,7 +37,11 @@
     class:pending={state.status === "pending"}
   >
     {#if state.output !== undefined}
-      <FullView value={state.output} />
+      {#if state.type === "code"}
+        <FullView value={state.output} />
+      {:else}
+        <PlotView value={state.output} />
+      {/if}
     {/if}
   </div>
 {/if}

@@ -1,0 +1,51 @@
+diff --git a/node_modules/domino/lib/Element.js b/node_modules/domino/lib/Element.js
+index ecc90a8..9fc2666 100644
+--- a/node_modules/domino/lib/Element.js
++++ b/node_modules/domino/lib/Element.js
+@@ -1075,8 +1075,8 @@ AttributesArray.prototype = Object.create(NamedNodeMap.prototype, {
+ 
+ // We can't make direct array access work (without Proxies, node >=6)
+ // but we can make `Array.from(node.attributes)` and for-of loops work.
+-if (global.Symbol && global.Symbol.iterator) {
+-    AttributesArray.prototype[global.Symbol.iterator] = function() {
++if (globalThis.Symbol && globalThis.Symbol.iterator) {
++    AttributesArray.prototype[globalThis.Symbol.iterator] = function() {
+         var i=0, n=this.length, self=this;
+         return {
+             next: function() {
+diff --git a/node_modules/domino/lib/config.js b/node_modules/domino/lib/config.js
+index abd3475..559a847 100644
+--- a/node_modules/domino/lib/config.js
++++ b/node_modules/domino/lib/config.js
+@@ -4,4 +4,4 @@
+  * you call `require("domino")`.
+  */
+ 
+-exports.isApiWritable = !global.__domino_frozen__;
++exports.isApiWritable = !globalThis.__domino_frozen__;
+diff --git a/node_modules/domino/lib/sloppy.js b/node_modules/domino/lib/sloppy.js
+index b5d8950..e920db1 100644
+--- a/node_modules/domino/lib/sloppy.js
++++ b/node_modules/domino/lib/sloppy.js
+@@ -6,19 +6,9 @@
+ /* jshint -W085 */
+ module.exports = {
+   Window_run: function _run(code, file) {
+-    if (file) code += '\n//@ sourceURL=' + file;
+-    with(this) eval(code);
++    console.log("Window_run removed")
+   },
+   EventHandlerBuilder_build: function build() {
+-    try {
+-      with(this.document.defaultView || Object.create(null))
+-        with(this.document)
+-          with(this.form)
+-            with(this.element)
+-              return eval("(function(event){" + this.body + "})");
+-    }
+-    catch (err) {
+-      return function() { throw err; };
+-    }
++    console.log("EventHandlerBuilder_build removed")
+   }
+ };

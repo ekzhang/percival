@@ -47,4 +47,14 @@ describe("marshal function", () => {
       },
     ]);
   });
+
+  it("encodes a plot", () => {
+    check([
+      {
+        type: "plot",
+        value: `aapl => Plot.area(aapl, {x1: "Date", y1: 0, y2: "Close"}).plot()`,
+        hidden: false,
+      },
+    ]);
+  });
 });

@@ -7,10 +7,10 @@ results.
 
 Percival combines the flexibility of
 [_Datalog_](https://en.wikipedia.org/wiki/Datalog) as a query language for
-relational data with the interactive beauty of
-[_Vega_](https://vega.github.io/vega/)-like visualization grammars. These
-declarative components interact through a reactive dataflow system. Because
-Percival uses web technologies (including Web Workers for multithreaded,
+relational data with the beauty of
+[_exploratory visualization grammars_](https://observablehq.com/@observablehq/plot).
+These declarative components interact through a reactive dataflow system.
+Because Percival uses web technologies (including Web Workers for multithreaded,
 sandboxed execution), fully-interactive notebooks can be shared with anyone on
 the Internet, making data analyses more tangible to others.
 

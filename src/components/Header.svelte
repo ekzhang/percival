@@ -64,13 +64,14 @@
       Percival combines the flexibility of <Link
         external
         href="https://en.wikipedia.org/wiki/Datalog"><em>Datalog</em></Link
-      > as a query language for relational data with the interactive beauty of
-      <Link external href="https://vega.github.io/vega/"><em>Vega</em></Link
-      >-like visualization grammars. These declarative components interact
-      through a reactive dataflow system. Because Percival uses web technologies
-      (including Web Workers for multithreaded, sandboxed execution),
-      fully-interactive notebooks can be shared with anyone on the Internet,
-      making data analyses more tangible to others.
+      > as a query language for relational data with the beauty of
+      <Link external href="https://observablehq.com/@observablehq/plot"
+        ><em>exploratory visualization grammars</em></Link
+      >. These declarative components interact through a reactive dataflow
+      system. Because Percival uses web technologies (including Web Workers for
+      multithreaded, sandboxed execution), fully-interactive notebooks can be
+      shared with anyone on the Internet, making data analyses more tangible to
+      others.
     </p>
     <p>
       At the core of Percival is a custom Datalog compiler, built with Rust and

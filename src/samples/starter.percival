@@ -1,5 +1,19 @@
 This is a Percival notebook (https://percival.ink/).
 
+╔═╡ Plot
+average_mpg => Plot.plot({
+  x: { grid: true },
+  y: { grid: true },
+  marks: [
+    Plot.line(average_mpg, {
+      sort: "year",
+      x: "year",
+      y: "value",
+      stroke: "country",
+    }),
+  ],
+})
+
 ╔═╣ Markdown
 # Welcome to Percival!
 
@@ -21,9 +35,10 @@ import cars from "npm://vega-datasets@2.1.0/data/cars.json"
 country(name: Origin) :- cars(Origin).
 
 ╔═╡ Code
-average_mpg(country, value) :-
+average_mpg(country, year: `new Date(year)`, value) :-
   country(name: country),
-  value = mean[Miles_per_Gallon] { cars(Origin: country, Miles_per_Gallon) }.
+  cars(Year: year),
+  value = mean[Miles_per_Gallon] { cars(Origin: country, Year: year, Miles_per_Gallon) }.
 
 ╔═╡ Code
 // Edge relation

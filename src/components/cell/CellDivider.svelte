@@ -21,6 +21,14 @@
     <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
     <span>Markdown Cell</span>
   </button>
+  <button
+    on:click={() => dispatch("create", { type: "plot" })}
+    tabindex="-1"
+    class="ml-4"
+  >
+    <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
+    <span>Plot Cell</span>
+  </button>
 </div>
 
 <style lang="postcss">
