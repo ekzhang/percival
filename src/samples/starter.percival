@@ -149,6 +149,6 @@ Let's see how all of these pieces combine together to work on a real-world datas
 ╔═╣ Markdown
 ## Closing
 
-Thanks for reading! Percival is at an early experimental stage, so if you have any comments or feedback, please consider joining the [GitHub Discussions forum](https://github.com/ekzhang/percival).
+Thanks for reading! Percival is at an experimental stage. If you have any comments or feedback, you can reach me at [GitHub Discussions](https://github.com/ekzhang/percival) or on Twitter [@ekzhang1](https://twitter.com/ekzhang1).
 
-If you like the idea behind Percival, feel free to try it out on your own problems! Also, if you press the "Share" button at the top of this page, you'll get a permanent link to the current notebook. Unlike Jupyter or R exports, these documents are fully interactive, and you only need a browser to continue exploring where you left off. 😀
+If you like the ideas behind Percival, feel free to try it out on your own problems! By the way, if you press the "Share" button at the top of this page, you'll get a permanent link to the current notebook. Unlike Jupyter or R exports, these documents are fully interactive, and you only need a browser to continue exploring where you left off. 😀
