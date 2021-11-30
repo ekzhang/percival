@@ -1,6 +1,6 @@
 import Immutable from "immutable";
 
-/** Keep this object in sync with `codegen.rs`. */
+/** Implementations of aggregates. Keep this in sync with `codegen.rs`. */
 const aggregates: Record<string, (results: any[]) => any> = {
   count(results) {
     return results.length;

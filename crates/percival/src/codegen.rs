@@ -6,10 +6,22 @@ use std::{
     rc::Rc,
 };
 
-use rpds::RedBlackTreeMap;
+use rpds::{RedBlackTreeMap, RedBlackTreeSet};
 use thiserror::Error;
 
-use crate::ast::{Clause, Literal, Program, Rule, Value};
+use crate::ast::{Aggregate, Clause, Literal, Program, Rule, Value};
+
+const VAR_DEPS: &str = "__percival_deps";
+const VAR_IMMUTABLE: &str = "__percival_immutable";
+const VAR_AGGREGATES: &str = "__percival_aggregates";
+const VAR_IMPORTS: &str = "__percival_imports";
+
+const VAR_FIRST_ITERATION: &str = "__percival_first_iteration";
+const VAR_OBJ: &str = "__percival_obj";
+const VAR_GOAL: &str = "__percival_goal";
+
+/// List of aggregate operators. Keep this in sync with `worker.ts`.
+const OPERATORS: [&str; 5] = ["count", "sum", "mean", "min", "max"];
 
 /// An error during code generation.
 #[derive(Error, Debug)]
@@ -33,19 +45,18 @@ pub enum Error {
     /// Two conflicting variables were defined with the same name.
     #[error("Conflicting declaration of variable \"{0}\"")]
     DuplicateVariable(String),
+
+    /// Unknown aggregate operator was referenced.
+    #[error("Aggregate operator \"{0}\" is not in {OPERATORS:?}")]
+    UnknownAggregate(String),
+
+    /// Aggregate references relation that is declared in this cell.
+    #[error("Relation \"{0}\" is queried in the same cell that it is declared")]
+    CircularReference(String),
 }
 
 /// Result returned by the compiler.
 pub type Result<T> = std::result::Result<T, Error>;
-
-const VAR_DEPS: &str = "__percival_deps";
-const VAR_IMMUTABLE: &str = "__percival_immutable";
-const VAR_AGGREGATES: &str = "__percival_aggregates";
-const VAR_IMPORTS: &str = "__percival_imports";
-
-const VAR_FIRST_ITERATION: &str = "__percival_first_iteration";
-const VAR_OBJ: &str = "__percival_obj";
-const VAR_GOAL: &str = "__percival_goal";
 
 /// An index created on a subset of relation fields.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -199,39 +210,76 @@ fn make_global_context(prog: &Program) -> Result<Context> {
 }
 
 fn make_indices(prog: &Program) -> BTreeSet<Index> {
-    prog.rules
-        .iter()
-        .flat_map(|rule| {
-            let mut vars = BTreeSet::new();
-            let mut indices = BTreeSet::new();
-            for clause in &rule.clauses {
-                if let Clause::Fact(fact) = clause {
-                    let mut bound = BTreeSet::new();
-                    for (key, value) in &fact.props {
-                        match value {
-                            Value::Id(id) => {
-                                if vars.contains(id) {
-                                    bound.insert(key.to_owned());
-                                } else {
-                                    vars.insert(id);
-                                }
-                            }
-                            Value::Literal(_) | Value::Expr(_) | Value::Aggregate(_) => {
+    fn walk_clause<'a>(
+        indices: &mut BTreeSet<Index>,
+        vars: &mut RedBlackTreeSet<&'a str>,
+        clause: &'a Clause,
+    ) {
+        match clause {
+            Clause::Fact(fact) => {
+                for value in fact.props.values() {
+                    walk_value(indices, vars, value);
+                }
+                let mut bound = BTreeSet::new();
+                for (key, value) in &fact.props {
+                    match value {
+                        Value::Id(id) => {
+                            if vars.contains(&id[..]) {
                                 bound.insert(key.to_owned());
+                            } else {
+                                *vars = vars.insert(id);
                             }
                         }
-                    }
-                    if !bound.is_empty() {
-                        indices.insert(Index {
-                            name: fact.name.clone(),
-                            bound,
-                        });
+                        Value::Literal(_) | Value::Expr(_) | Value::Aggregate(_) => {
+                            bound.insert(key.to_owned());
+                        }
                     }
                 }
+                if !bound.is_empty() {
+                    indices.insert(Index {
+                        name: fact.name.clone(),
+                        bound,
+                    });
+                }
             }
-            indices
-        })
-        .collect()
+            Clause::Expr(_) => (),
+            Clause::Binding(_, value) => {
+                walk_value(indices, vars, value);
+            }
+        }
+    }
+
+    fn walk_clauses<'a>(
+        indices: &mut BTreeSet<Index>,
+        vars: &mut RedBlackTreeSet<&'a str>,
+        clauses: &'a [Clause],
+    ) {
+        for clause in clauses {
+            walk_clause(indices, vars, clause);
+        }
+    }
+
+    fn walk_value(indices: &mut BTreeSet<Index>, vars: &RedBlackTreeSet<&str>, value: &Value) {
+        if let Value::Aggregate(aggregate) = value {
+            let mut vars = vars.clone();
+            walk_clauses(indices, &mut vars, &aggregate.subquery);
+            walk_value(indices, &vars, &aggregate.value);
+        }
+    }
+
+    fn walk_rule(indices: &mut BTreeSet<Index>, rule: &Rule) {
+        let mut vars = RedBlackTreeSet::new();
+        walk_clauses(indices, &mut vars, &rule.clauses);
+        for value in rule.goal.props.values() {
+            walk_value(indices, &vars, value);
+        }
+    }
+
+    let mut indices = BTreeSet::new();
+    for rule in &prog.rules {
+        walk_rule(&mut indices, rule);
+    }
+    indices
 }
 
 fn cmp_imports(prog: &Program) -> Result<String> {
@@ -479,7 +527,7 @@ fn cmp_rule_incremental(
     let mut clauses = Vec::new();
     for (i, clause) in rule.clauses.iter().enumerate() {
         let only_update = update_position == Some(i);
-        clauses.push(cmp_clause(&mut ctx, clause, only_update)?);
+        clauses.push(cmp_clause(&mut ctx, clause, only_update, false)?);
     }
 
     let goal = format!(
@@ -504,9 +552,18 @@ if (!{set}.includes({goal})) {new}.add({goal});
     Ok(code)
 }
 
-fn cmp_clause(ctx: &mut Context, clause: &Clause, only_update: bool) -> Result<String> {
+fn cmp_clause(
+    ctx: &mut Context,
+    clause: &Clause,
+    only_update: bool,
+    is_subquery: bool,
+) -> Result<String> {
     match clause {
         Clause::Fact(fact) => {
+            if is_subquery && ctx.results.contains(&fact.name) {
+                return Err(Error::CircularReference(fact.name.clone()));
+            }
+
             let mut bound_fields = BTreeMap::new();
             let mut setters = Vec::new();
             for (key, value) in &fact.props {
@@ -604,8 +661,52 @@ fn cmp_value(ctx: &Context, value: &Value) -> Result<String> {
         Value::Literal(Literal::String(s)) => format!("\"{}\"", s),
         Value::Literal(Literal::Boolean(b)) => b.to_string(),
         Value::Expr(e) => format!("({})", e),
-        Value::Aggregate(_) => todo!(),
+        Value::Aggregate(aggregate) => cmp_aggregate(ctx, aggregate)?,
     })
+}
+
+fn cmp_aggregate(ctx: &Context, aggregate: &Aggregate) -> Result<String> {
+    if !OPERATORS.contains(&&aggregate.operator[..]) {
+        return Err(Error::UnknownAggregate(aggregate.operator.clone()));
+    }
+    let mut ctx = ctx.clone(); // Create a new context for this aggregate.
+    let results_var = ctx.gensym("results");
+
+    let subquery_loop = {
+        let mut clauses = Vec::new();
+        for clause in &aggregate.subquery {
+            clauses.push(cmp_clause(&mut ctx, clause, false, true)?);
+        }
+
+        let goal = format!(
+            "{results}.push({value});",
+            results = results_var,
+            value = cmp_value(&ctx, &aggregate.value)?,
+        );
+
+        let mut code = String::new();
+        for clause in &clauses {
+            code += clause;
+            code += "\n";
+        }
+        code += &goal;
+        code += &"\n}".repeat(clauses.len());
+        code
+    };
+
+    let code = format!(
+        "{agg}.{op}((() => {{
+    const {results} = [];
+    {subquery_loop}
+    return {results};
+}})())",
+        agg = VAR_AGGREGATES,
+        op = aggregate.operator,
+        results = results_var,
+        subquery_loop = subquery_loop,
+    );
+
+    Ok(code)
 }
 
 fn cmp_set_update_to_new(ctx: &Context) -> Result<String> {

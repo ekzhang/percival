@@ -24,7 +24,6 @@ async function checkProgram({
   expect(result.deps).to.have.members(deps);
   expect(result.results).to.have.members(results);
   const observed = await result.evaluate(input);
-  expect(observed).to.have.keys(...Object.keys(output));
   for (const key of Object.keys(output)) {
     expect(observed[key]).to.have.deep.members(output[key]);
   }
@@ -260,6 +259,132 @@ describe("import directives", () => {
           { date: "1856-02-01", wounds: 0, other: 100, disease: 100 },
           { date: "1856-03-01", wounds: 0, other: 125, disease: 90 },
         ],
+      },
+    });
+  });
+});
+
+describe("aggregation operators", () => {
+  it("calculates statistics in crimea data", async () => {
+    await init();
+    await checkProgram({
+      src: `
+import crimea from "npm://vega-datasets@2.1.0/data/crimea.json"
+
+stats(count, max_wounds, min_wounds, total_wounds, mean_wounds) :-
+  count = count[1] { crimea() },
+  max_wounds = max[wounds] { crimea(wounds) },
+  min_wounds = min[wounds] { crimea(wounds) },
+  total_wounds = sum[wounds] { crimea(wounds) },
+  mean_wounds = mean[wounds] { crimea(wounds) }.
+`,
+      deps: [],
+      results: ["crimea", "stats"],
+      input: {},
+      output: {
+        stats: [
+          {
+            count: 24,
+            max_wounds: 480,
+            min_wounds: 0,
+            total_wounds: 3770,
+            mean_wounds: 3770 / 24,
+          },
+        ],
+      },
+    });
+  });
+
+  it("calculates yearly mpg in car data", async () => {
+    await init();
+    await checkProgram({
+      src: `
+import cars from "npm://vega-datasets/data/cars.json"
+
+year(year: Year) :- cars(Year).
+
+yearly_mpg(year, value) :-
+  year(year),
+  value = mean[Miles_per_Gallon] {
+    cars(Year: year, Miles_per_Gallon)
+  }.
+`,
+      deps: [],
+      results: ["cars", "year", "yearly_mpg"],
+      input: {},
+      output: {
+        yearly_mpg: [
+          {
+            value: 33.696551724137926,
+            year: "1980-01-01",
+          },
+          {
+            value: 22.703703703703702,
+            year: "1974-01-01",
+          },
+          {
+            value: 21.573529411764707,
+            year: "1976-01-01",
+          },
+          {
+            value: 30.536065573770493,
+            year: "1982-01-01",
+          },
+          {
+            value: 25.09310344827585,
+            year: "1979-01-01",
+          },
+          {
+            value: 20.517241379310345,
+            year: "1971-01-01",
+          },
+          {
+            value: 23.375,
+            year: "1977-01-01",
+          },
+          {
+            value: 18.714285714285715,
+            year: "1972-01-01",
+          },
+          {
+            value: 24.061111111111114,
+            year: "1978-01-01",
+          },
+          {
+            value: 20.266666666666666,
+            year: "1975-01-01",
+          },
+          {
+            value: 17.1,
+            year: "1973-01-01",
+          },
+          {
+            value: 14.657142857142857,
+            year: "1970-01-01",
+          },
+        ],
+      },
+    });
+  });
+
+  it("handles nested aggregates", async () => {
+    await init();
+    await checkProgram({
+      src: `ok(value: sum[min[to] { edge(from, to) }] { vertex(id: from) }).`,
+      deps: ["vertex", "edge"],
+      results: ["ok"],
+      input: {
+        vertex: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
+        edge: [
+          { from: 1, to: 3 },
+          { from: 1, to: 2 },
+          { from: 2, to: 4 },
+          { from: 3, to: 3 },
+          { from: 4, to: 1 },
+        ],
+      },
+      output: {
+        ok: [{ value: 10 }],
       },
     });
   });

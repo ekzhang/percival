@@ -1,0 +1,1 @@
+ok(value: sum[min[to] { edge(from, to) }] { vertex(id: from) }).

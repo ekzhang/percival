@@ -23,7 +23,7 @@ pub struct Rule {
 /// An element of the right-hand side of a rule.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Clause {
-    /// Tail fact assumption of the rule.
+    /// Relational assumption in the rule.
     Fact(Fact),
     /// Raw JavaScript conditional expression between backticks.
     Expr(String),
@@ -84,6 +84,42 @@ pub struct Import {
     pub uri: String,
 }
 
+impl Value {
+    /// Returns all relations referenced by this value.
+    pub fn deps(&self) -> BTreeSet<String> {
+        match self {
+            Value::Aggregate(aggregate) => {
+                let mut deps: BTreeSet<_> = aggregate
+                    .subquery
+                    .iter()
+                    .flat_map(|clause| clause.deps())
+                    .collect();
+                deps.extend(aggregate.value.deps());
+                deps
+            }
+            _ => BTreeSet::new(),
+        }
+    }
+}
+
+impl Clause {
+    /// Returns all relations referenced by this clause.
+    pub fn deps(&self) -> BTreeSet<String> {
+        match self {
+            Clause::Fact(fact) => {
+                let mut deps = BTreeSet::new();
+                deps.insert(fact.name.clone());
+                for value in fact.props.values() {
+                    deps.extend(value.deps());
+                }
+                deps
+            }
+            Clause::Expr(_) => BTreeSet::new(),
+            Clause::Binding(_, value) => value.deps(),
+        }
+    }
+}
+
 impl Program {
     /// Returns the names of all relations produced by this program.
     pub fn results(&self) -> BTreeSet<String> {
@@ -100,15 +136,15 @@ impl Program {
         self.rules
             .iter()
             .flat_map(|rule| {
-                rule.clauses.iter().filter_map(|clause| match clause {
-                    Clause::Fact(fact)
-                        if !results.contains(&fact.name) && !imports.contains(&fact.name) =>
-                    {
-                        Some(fact.name.clone())
-                    }
-                    _ => None,
-                })
+                let mut deps: BTreeSet<String> = rule
+                    .clauses
+                    .iter()
+                    .flat_map(|clause| clause.deps())
+                    .collect();
+                deps.extend(rule.goal.props.values().flat_map(|value| value.deps()));
+                deps
             })
+            .filter(|name| !results.contains(name) && !imports.contains(name))
             .collect()
     }
 
