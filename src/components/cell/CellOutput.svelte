@@ -93,26 +93,37 @@
   }
 
   .markdown-output :global(h1) {
-    @apply text-4xl font-bold my-4 border-b-2;
+    @apply text-4xl font-semibold my-4 border-b-2;
   }
   .markdown-output :global(h2) {
-    @apply text-3xl font-bold my-3;
+    @apply text-3xl font-semibold my-3;
   }
   .markdown-output :global(h3) {
-    @apply text-2xl font-bold my-3;
+    @apply text-2xl font-semibold my-3;
   }
   .markdown-output :global(h4) {
-    @apply text-xl font-bold my-3;
+    @apply text-xl font-semibold my-3;
   }
   .markdown-output :global(h5) {
-    @apply text-lg font-bold my-3;
+    @apply text-lg font-semibold my-3;
   }
   .markdown-output :global(h6) {
-    @apply font-bold my-3;
+    @apply font-semibold my-3;
   }
 
   .markdown-output :global(p) {
     @apply my-3;
+  }
+
+  .markdown-output :global(a) {
+    @apply hover:underline text-blue-600;
+  }
+
+  .markdown-output :global(ul) {
+    @apply list-disc pl-7;
+  }
+  .markdown-output :global(ol) {
+    @apply list-decimal pl-7;
   }
 
   .markdown-output :global(pre) {

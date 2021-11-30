@@ -1,5 +1,130 @@
 This is a Percival notebook (https://percival.ink/).
 
+╔═╣ Markdown
+# Welcome to Percival!
+
+Percival is an in-browser interactive notebook for **declarative data analysis** and **visualization**. It combines the power of compiled [Datalog](https://en.wikipedia.org/wiki/Datalog) queries with the flexibility of [modern plotting libraries](https://observablehq.com/@observablehq/plot) for the web.
+
+![Picture of a landscape](https://upload.wikimedia.org/wikipedia/commons/e/ee/Lake_Geneva_after_storm.jpg)
+
+This notebook is fully interactive! Here are the controls:
+
+- Edit the contents of any cell in the code editor, and press Shift+Enter to save.
+- Toggle source code visibility and delete cells in the left gutter.
+- Create new cells by hovering your mouse in an empty space and clicking the popup.
+
+To get started, let's dive into the basics of the language.
+
+╔═╣ Markdown
+## Intro to Datalog
+
+Datalog is a fully-featured database query language, similar to SQL. It originates from logic programming as a subset of Prolog. The basic object in Datalog is called a _relation_, and it is the equivalent of a table in traditional databases.
+
+Let's create a very simple relation that stores edges in a directed graph.
+
+╔═╡ Code
+// Edge relation: each line is a database entry.
+edge(x: 1, y: 2).
+edge(x: 2, y: 3).
+edge(x: 2, y: 4).
+
+╔═╣ Markdown
+With Datalog, you can compute all paths within this graph by writing the query in the following code cell. This query consists of two _rules_, which use the `:-` notation. When we write this query, the outputs are displayed above the cell.
+
+╔═╡ Code
+// Given an edge x -> y, there is a path x -> y.
+path(x, y) :- edge(x, y).
+
+// Given an edge x -> z and a path z -> y, there is a path x -> y.
+path(x, y) :- edge(x, y: z), path(x: z, y).
+
+╔═╣ Markdown
+One of Percival's key features is _reactivity_. Try changing the first code cell by adding the following line, which introduces a new entry to the database:
+```
+edge(x: 4, y: 5).
+```
+After that, press Shift+Enter to save you work. What happens? You should see the results of the `path` cell change as well, since its dependent relation `edge` was updated.
+
+**Exercise:** Now it's your turn. See if you can understand what the following query is doing, and try to modify it to also return direct connections to node 1.
+
+╔═╡ Code
+// Find all "friends of friends" of node 1 in the graph.
+friends1(friend_of_friend) :-
+  edge(x: 1, y: friend),
+  edge(x: friend, y: friend_of_friend).
+
+╔═╣ Markdown
+## Embedding Code
+
+These examples show the core of Datalog in its purest form, a programming language based on the relational algebra. However, to do real-world data analysis, we need to support other operations, like arithmetic, strings, and other standard data types!
+
+Percival handles this situation by allowing you to seamlessly embed JavaScript expressions within queries. These are delimited by backquotes.
+
+╔═╡ Code
+name(full_name: `first + " " + last`, sqrt_age) :-
+  person(first, last, age),
+  sqrt_age = `Math.sqrt(age)`.
+
+person(first: "Eric", last: "Zhang", age: 20).
+person(first: "Foo", last: "Bar", age: 45).
+person(first: "Baz", last: "Lam", age: 12).
+
+╔═╣ Markdown
+For a more complex example, here is how you would find all paths of length _at most 10_ inside a directed graph.
+
+╔═╡ Code
+walk(x: v, y: v, len: 0) :- edge(x: v, _).
+walk(x: v, y: v, len: 0) :- edge(_, y: v).
+
+// What happens to the output of this rule if we add a cycle to the graph?
+walk(x, y, len) :-
+  walk(x, y: z, len: len1),
+  edge(x: z, y),
+  len = `len1 + 1`,
+  `len <= 10`.
+
+╔═╣ Markdown
+Here's one more fun example of arithmetic in rules: computing Fibonacci numbers! You can try changing the value of `max_n` to see how quickly the result is updated.
+
+Don't worry about slowing down the website, since Percival runs on Web Workers isolated from your browser's main render thread.
+
+╔═╡ Code
+max_n(value: 30).
+
+╔═╡ Code
+fib(n: 0, v: 0).
+fib(n: 1, v: 1).
+fib(n: `n + 1`, v) :-
+  fib(n, v: v1),
+  fib(n: `n - 1`, v: v2),
+  v = `v1 + v2`,
+  max_n(value),
+  `n < value`.
+
+╔═╣ Markdown
+## Aggregates
+
+Not only can you do mathematical operations in queries, but you can also perform _aggregates_. In this version, supported aggregates include `sum`, `min`, `max`, `mean`, and `count`.
+
+For this example, we're going to import a publicly available dataset about cars from NPM. Percival allows you to load any public JSON dataset from GitHub, NPM, or standard HTTPS web link.
+
+╔═╡ Code
+import cars from "npm://vega-datasets@2.1.0/data/cars.json"
+
+country(name: Origin) :- cars(Origin).
+
+╔═╣ Markdown
+For each year and country of origin in the dataset, we will query for the average fuel economy of cars. This might let us answer questions about how fuel economy changes over time between the countries.
+
+╔═╡ Code
+average_mpg(country, year: `new Date(year)`, value) :-
+  country(name: country),
+  cars(Year: year),
+  value = mean[Miles_per_Gallon] { cars(Origin: country, Year: year, Miles_per_Gallon) }.
+
+╔═╣ Markdown
+With support for aggregates, we can now answer a lot of analytical questions about the data. One key tool for exploring datasets is visualization. Percival supports declarative data visualization through its _Plot_ cells, which run JavaScript that can generate diagrams using the [Observable Plot](https://github.com/observablehq/plot) library.
+
 ╔═╡ Plot
 average_mpg => Plot.plot({
   x: { grid: true },
@@ -15,75 +140,15 @@ average_mpg => Plot.plot({
 })
 
 ╔═╣ Markdown
-# Welcome to Percival!
+## Integrated Case Study
 
-Hello world! Welcome to my new cell :)
+Let's see how all of these pieces combine together to work on a real-world dataset, where you join and piece together data from multiple different sources.
 
-```
-.decl alias(a:var, b:var) output
-alias(X, X) :- assign(X, _).
-alias(X, X) :- assign(_, X).
-alias(X, Y) :- assign(X, Y).
-alias(X, Y) :- ld(X, A, F), alias(A, B), st(B, F, Y).
-```
-
-The above is a code block.
-
-╔═╡ Code
-import cars from "npm://vega-datasets@2.1.0/data/cars.json"
-
-country(name: Origin) :- cars(Origin).
-
-╔═╡ Code
-average_mpg(country, year: `new Date(year)`, value) :-
-  country(name: country),
-  cars(Year: year),
-  value = mean[Miles_per_Gallon] { cars(Origin: country, Year: year, Miles_per_Gallon) }.
-
-╔═╡ Code
-// Edge relation
-edge(x: 2, y: 3).
-edge(x: 3, y: 4).
-edge(x: 3, y: 5).
-
-// Transitive closure
-tc(x, y) :- edge(x, y).
-tc(x, y) :- tc(x, y: z), edge(x: z, y).
-
-╔═╡ Code
-max_n(value: 30).
-
-╔═╡ Code
-fib(n: 0, v: 0).
-fib(n: 1, v: 1).
-fib(n: `n + 1`, v) :-
-  fib(n, v: v1),
-  fib(n: `n - 1`, v: v2),
-  v = `v1 + v2`,
-  max_n(value),
-  `n < value`.
-
-╔═╡ Code
-person(first: "Eric", last: "Zhang").
-person(first: "Foo", last: "Bar").
-person(first: "Baz", last: "Lam").
-
-// person(first, last) :- person(first), person(last).
-
-╔═╡ Code
-name(value: `first + " " + last`) :- person(first, last).
+**TODO: NOT DONE**
 
 ╔═╣ Markdown
-## This is my first Percival notebook.
+## Closing
 
-Hello **world**! My `name` is _Eric_. This is an example of a Markdown cell.
+Thanks for reading! Percival is at an early experimental stage, so if you have any comments or feedback, please consider joining the [GitHub Discussions forum](https://github.com/ekzhang/percival).
 
-You can edit the source of this cell below and press `Shift+Enter` to see your changes.
-
-Ducimus ex veniam distinctio ut maxime. Rerum earum distinctio amet voluptates. Ea aut saepe consectetur rem natus qui et voluptas.
-
-Voluptate voluptatem tempora rerum ipsam accusantium dolorum fuga veniam. Tenetur harum doloribus ex saepe. Consectetur autem omnis nesciunt. Vel sit dicta esse aspernatur nesciunt. Voluptate quo non rerum omnis recusandae blanditiis consequatur.
-
-![Picture of a mountain](https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Fronalpstock_big.jpg/800px-Fronalpstock_big.jpg)
-
-Hopefully you see the image above!
+If you like the idea behind Percival, feel free to try it out on your own problems! Also, if you press the "Share" button at the top of this page, you'll get a permanent link to the current notebook. Unlike Jupyter or R exports, these documents are fully interactive, and you only need a browser to continue exploring where you left off. 😀

@@ -35,7 +35,7 @@
 
 {#if sharing !== "none" && sharing !== "pending"}
   <Dialog on:close={() => dispatch("shareclose")}>
-    <h2 class="text-2xl text-center font-bold font-serif mb-2">
+    <h2 class="text-2xl text-center font-semibold font-serif mb-2">
       Notebook Sharing
     </h2>
 
