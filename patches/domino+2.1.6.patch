@@ -1,3 +1,72 @@
+diff --git a/node_modules/domino/lib/DOMImplementation.js b/node_modules/domino/lib/DOMImplementation.js
+index 675b687..8b64565 100644
+--- a/node_modules/domino/lib/DOMImplementation.js
++++ b/node_modules/domino/lib/DOMImplementation.js
+@@ -41,7 +41,7 @@ DOMImplementation.prototype = {
+     // namespace and doctype are propertly set.  See this thread:
+     // http://lists.w3.org/Archives/Public/www-dom/2011AprJun/0132.html
+     //
+-    var d = new Document(false, null);
++    var d = new Document(false, null, DOMImplementation);
+     var e;
+ 
+     if (qualifiedName)
+@@ -66,7 +66,7 @@ DOMImplementation.prototype = {
+   },
+ 
+   createHTMLDocument: function createHTMLDocument(titleText) {
+-    var d = new Document(true, null);
++    var d = new Document(true, null, DOMImplementation);
+     d.appendChild(new DocumentType(d, 'html'));
+     var html = d.createElement('html');
+     d.appendChild(html);
+diff --git a/node_modules/domino/lib/Document.js b/node_modules/domino/lib/Document.js
+index 8f9cbe5..cb725a9 100644
+--- a/node_modules/domino/lib/Document.js
++++ b/node_modules/domino/lib/Document.js
+@@ -10,7 +10,6 @@ var Comment = require('./Comment');
+ var Event = require('./Event');
+ var DocumentFragment = require('./DocumentFragment');
+ var ProcessingInstruction = require('./ProcessingInstruction');
+-var DOMImplementation = require('./DOMImplementation');
+ var TreeWalker = require('./TreeWalker');
+ var NodeIterator = require('./NodeIterator');
+ var NodeFilter = require('./NodeFilter');
+@@ -25,13 +24,14 @@ var MUTATE = require('./MutationConstants');
+ var NAMESPACE = utils.NAMESPACE;
+ var isApiWritable = require("./config").isApiWritable;
+ 
+-function Document(isHTML, address) {
++function Document(isHTML, address, DomImpl) {
+   ContainerNode.call(this);
++  this._DomImpl = DomImpl;
+   this.nodeType = Node.DOCUMENT_NODE;
+   this.isHTML = isHTML;
+   this._address = address || 'about:blank';
+   this.readyState = 'loading';
+-  this.implementation = new DOMImplementation(this);
++  this.implementation = new DomImpl(this);
+ 
+   // DOMCore says that documents are always associated with themselves
+   this.ownerDocument = null; // ... but W3C tests expect null
+@@ -507,7 +507,7 @@ Document.prototype = Object.create(ContainerNode.prototype, {
+ 
+   // Utility methods
+   clone: { value: function clone() {
+-    var d = new Document(this.isHTML, this._address);
++    var d = new Document(this.isHTML, this._address, this._DomImpl);
+     d._quirks = this._quirks;
+     d._contentType = this._contentType;
+     return d;
+@@ -711,7 +711,7 @@ Document.prototype = Object.create(ContainerNode.prototype, {
+   _templateDoc: { get: function() {
+     if (!this._templateDocCache) {
+       // "associated inert template document"
+-      var newDoc = new Document(this.isHTML, this._address);
++      var newDoc = new Document(this.isHTML, this._address, this._DomImpl);
+       this._templateDocCache = newDoc._templateDocCache = newDoc;
+     }
+     return this._templateDocCache;
 diff --git a/node_modules/domino/lib/Element.js b/node_modules/domino/lib/Element.js
 index ecc90a8..9fc2666 100644
 --- a/node_modules/domino/lib/Element.js
@@ -13,6 +82,27 @@ index ecc90a8..9fc2666 100644
          var i=0, n=this.length, self=this;
          return {
              next: function() {
+diff --git a/node_modules/domino/lib/HTMLParser.js b/node_modules/domino/lib/HTMLParser.js
+index 2d80093..f448b01 100644
+--- a/node_modules/domino/lib/HTMLParser.js
++++ b/node_modules/domino/lib/HTMLParser.js
+@@ -1,6 +1,7 @@
+ "use strict";
+ module.exports = HTMLParser;
+ 
++var DOMImplementation = require('./DOMImplementation');
+ var Document = require('./Document');
+ var DocumentType = require('./DocumentType');
+ var Node = require('./Node');
+@@ -2126,7 +2127,7 @@ function HTMLParser(address, fragmentContext, options) {
+ 
+ 
+   // This is the document we'll be building up
+-  var doc = new Document(true, address);
++  var doc = new Document(true, address, DOMImplementation);
+ 
+   // The document needs to know about the parser, for document.write().
+   // This _parser property will be deleted when we're done parsing.
 diff --git a/node_modules/domino/lib/config.js b/node_modules/domino/lib/config.js
 index abd3475..559a847 100644
 --- a/node_modules/domino/lib/config.js
