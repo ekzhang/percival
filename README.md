@@ -5,6 +5,10 @@ visualization language**. It provides a reactive, web-based notebook environment
 for exploring complex datasets, producing interactive graphics, and sharing
 results.
 
+<p align="center">
+  <a href="https://percival.ink/"><img src="https://i.imgur.com/zW5cuBH.png" width="720"></a>
+</p>
+
 Percival combines the flexibility of
 [_Datalog_](https://en.wikipedia.org/wiki/Datalog) as a query language for
 relational data with the beauty of

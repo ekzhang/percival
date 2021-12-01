@@ -73,8 +73,8 @@ person(first: "Baz", last: "Lam", age: 12).
 For a more complex example, here is how you would find all paths of length _at most 10_ inside a directed graph.
 
 ╔═╡ Code
-walk(x: v, y: v, len: 0) :- edge(x: v, _).
-walk(x: v, y: v, len: 0) :- edge(_, y: v).
+walk(x: v, y: v, len: 0) :- edge(x: v).
+walk(x: v, y: v, len: 0) :- edge(y: v).
 
 // What happens to the output of this rule if we add a cycle to the graph?
 walk(x, y, len) :-
