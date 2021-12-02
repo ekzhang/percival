@@ -120,7 +120,9 @@ For each year and country of origin in the dataset, we will query for the averag
 average_mpg(country, year: `new Date(year)`, value) :-
   country(name: country),
   cars(Year: year),
-  value = mean[Miles_per_Gallon] { cars(Origin: country, Year: year, Miles_per_Gallon) }.
+  value = mean[Miles_per_Gallon] {
+    cars(Origin: country, Year: year, Miles_per_Gallon)
+  }.
 
 ╔═╣ Markdown
 With support for aggregates, we can now answer a lot of analytical questions about the data. One key tool for exploring datasets is visualization. Percival supports declarative data visualization through _Plot_ cells, which run JavaScript code that generates diagrams using the [Observable Plot](https://github.com/observablehq/plot) library.
