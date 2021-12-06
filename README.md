@@ -49,7 +49,11 @@ npm run dev
 
 This should open a Percival notebook in your browser, with live reloading.
 
-## High-Level Architecture
+## Architecture
+
+This section outlines the high-level technical design of Percival.
+
+### User Interface
 
 Percival is a client-side web application running fully in the user's browser.
 The notebook interface is built with [Svelte](https://svelte.dev/) and styled
@@ -64,9 +68,11 @@ Svelte (in `src/components/`) and TypeScript (in `src/lib/`). These modules are
 bundled into a static website at build time, and there is no dynamic server-side
 rendering.
 
-Users write notebook code cells in a custom dialect of Datalog, and they are
-translated to JavaScript by a Rust compiler, which is compiled to WebAssembly
-using [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen). The Percival
+### JIT Compiler
+
+Users write code cells in a custom dialect of Datalog, and they are translated
+to JavaScript by a Rust compiler, which itself is compiled to WebAssembly using
+[wasm-bindgen](https://github.com/rustwasm/wasm-bindgen). The Percival
 compiler's code is located in the `crates/` folder. For ergonomic parsing with
 human-readable error messages, the compiler relies on
 [chumsky](https://github.com/zesterer/chumsky), a parser combinator library.
@@ -79,16 +85,21 @@ that sandbox the code and execute it just-in-time. As the user writes queries,
 their notebook automatically tracks inter-cell dependencies and evaluates cells
 in topological order, spawning / terminating worker threads on demand.
 
+### Data Visualization
+
 Plotting is done using a specialized web worker that runs JavaScript code with
 access to the [Observable Plot](https://observablehq.com/@observablehq/plot)
 library. In order for this library (and D3) to run in a worker context, we patch
 the global document with a lightweight virtual DOM implementation ported from
 [Domino](https://github.com/fgnass/domino).
 
+### Deployment
+
 In production, the `main` branch of this repository is continuously deployed to
 [percival.ink](https://percival.ink/) via [Vercel](https://vercel.com/), which
 hosts the static website. It also runs a serverless function (see
-`api/index.go`) that allows users to share notebooks through GitHub Gist.
+`api/index.go`) that allows users to share notebooks through the GitHub Gist
+API.
 
 ## Development
 
