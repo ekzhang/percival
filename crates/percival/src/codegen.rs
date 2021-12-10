@@ -12,8 +12,9 @@ use thiserror::Error;
 use crate::ast::{Aggregate, Clause, Literal, Program, Rule, Value};
 
 const VAR_DEPS: &str = "__percival_deps";
-const VAR_IMMUTABLE: &str = "__percival_immutable";
-const VAR_AGGREGATES: &str = "__percival_aggregates";
+const VAR_IMMUTABLE: &str = "__percival.Immutable";
+const VAR_LOAD: &str = "__percival.load";
+const VAR_AGGREGATES: &str = "__percival.aggregates";
 const VAR_IMPORTS: &str = "__percival_imports";
 
 const VAR_FIRST_ITERATION: &str = "__percival_first_iteration";
@@ -298,8 +299,8 @@ fn cmp_imports(prog: &Program) -> Result<String> {
             _ => return Err(Error::UnknownProtocol(protocol.into())),
         };
         fields.push(format!(
-            "{}: await fetch(\"{}\").then(resp => resp.json()),\n",
-            import.name, url,
+            "{}: await {}(\"{}\"),\n",
+            import.name, VAR_LOAD, url,
         ));
     }
     Ok(format!(
