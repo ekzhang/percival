@@ -225,7 +225,7 @@ describe("promise cancellation", () => {
 });
 
 describe("import directives", () => {
-  it("can load vega-datasets/crimea", async () => {
+  it("can load crimea.json", async () => {
     await init();
     await checkProgram({
       src: `import crimea from "npm://vega-datasets@2.1.0/data/crimea.json"`,
@@ -259,6 +259,22 @@ describe("import directives", () => {
           { date: "1856-02-01", wounds: 0, other: 100, disease: 100 },
           { date: "1856-03-01", wounds: 0, other: 125, disease: 90 },
         ],
+      },
+    });
+  });
+
+  it("can load iowa-electricity.csv", async () => {
+    await init();
+    await checkProgram({
+      src: `
+import iowa from "npm://vega-datasets@2.1.0/data/iowa-electricity.csv"
+count(value: count[1] { iowa() }).
+`,
+      deps: [],
+      results: ["iowa", "count"],
+      input: {},
+      output: {
+        count: [{ value: 51 }],
       },
     });
   });
