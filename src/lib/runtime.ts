@@ -3,13 +3,14 @@ import Worker from "./runtime.worker?worker&inline";
 
 // Needed to fix dependency pre-bundling issue in mocha-vite-puppeteer.
 //
-// This line is necessary because `immutable` is not present in the non-worker
-// bundle. This makes tests get confused because they discover the library mid-
-// execution and reload the page, breaking Puppeteer.
+// The following lines are necessary because these libraries are not present in
+// the non-worker bundle. This makes tests get confused because they discover
+// the library mid-execution and reload the page, breaking Puppeteer.
 //
-// The extra import does not affect performance or bundle size because of
+// The extra imports do not affect performance or bundle size because of
 // automatic tree-shaking optimizations.
 import "immutable";
+import "d3-dsv";
 
 interface CancellablePromise<T> extends Promise<T> {
   cancel: () => void;
