@@ -3,7 +3,7 @@ This is a Percival notebook (https://percival.ink/).
 ╔═╣ Markdown
 # Welcome to Percival!
 
-Percival is an in-browser interactive notebook for **declarative data analysis** and **visualization**. It combines the power of compiled [Datalog](https://en.wikipedia.org/wiki/Datalog) queries with the flexibility of [modern plotting libraries](https://observablehq.com/@observablehq/plot) for the web.
+Percival is an interactive in-browser notebook for **declarative data analysis** and **visualization**. It combines the power of compiled [Datalog](https://en.wikipedia.org/wiki/Datalog) queries with the flexibility of [modern plotting libraries](https://observablehq.com/@observablehq/plot) for the web.
 
 ![Picture of a landscape](https://upload.wikimedia.org/wikipedia/commons/e/ee/Lake_Geneva_after_storm.jpg)
 
@@ -153,4 +153,4 @@ Let's see how all of these pieces combine together to work on a real-world datas
 
 Thanks for reading! Percival is at an experimental stage. If you have any comments or feedback, you can reach me at [GitHub Discussions](https://github.com/ekzhang/percival) or on Twitter [@ekzhang1](https://twitter.com/ekzhang1).
 
-If you like the ideas behind Percival, feel free to try it out on your own problems! By the way, if you press the "Share" button at the top of this page, you'll get a permanent link to the current notebook. Unlike Jupyter or R exports, these documents are fully interactive, and you only need a browser to continue exploring where you left off. 😀
+If you like the ideas behind Percival, feel free to try it out on your own problems! By the way, if you press the "Share" button at the top of this page, you'll get a permanent link to the current notebook. Unlike Jupyter or R exports, these documents are fully interactive, and you only need a browser to continue exploring where you left off. ✨
