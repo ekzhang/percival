@@ -24,7 +24,11 @@
       <button
         on:click={() => dispatch("share")}
         class:loading={sharing === "pending"}
-        disabled={sharing !== "none"}><i><FaShareSquare /></i> Share</button
+        disabled={sharing !== "none"}
+        ><i><FaShareSquare /></i>
+        {#if sharing === "pending"}
+          Sharing...{:else}
+          Share{/if}</button
       >
       <button on:click={() => (about = true)} disabled={about}
         ><i class="mb-0.5"><FaRegQuestionCircle /></i> About</button
