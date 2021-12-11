@@ -1,5 +1,5 @@
 import Immutable from "immutable";
-import { csvParse, tsvParse } from "d3-dsv";
+import { autoType, csvParse, tsvParse } from "d3-dsv";
 
 /** Load data from an external source. */
 async function load(url: string): Promise<object[]> {
@@ -11,12 +11,12 @@ async function load(url: string): Promise<object[]> {
   if (url.endsWith(".json") || contentType?.match(/application\/json/i)) {
     return resp.json();
   } else if (url.endsWith(".csv") || contentType?.match(/text\/csv/i)) {
-    return csvParse(await resp.text());
+    return csvParse(await resp.text(), autoType);
   } else if (
     url.endsWith(".tsv") ||
     contentType?.match(/text\/tab-separated-values/i)
   ) {
-    return tsvParse(await resp.text());
+    return tsvParse(await resp.text(), autoType);
   } else {
     throw new Error(
       `Unknown file format for ${url}. Only JSON, CSV, and TSV are supported.

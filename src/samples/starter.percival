@@ -128,25 +128,142 @@ average_mpg(country, year: `new Date(year)`, value) :-
 With support for aggregates, we can now answer a lot of analytical questions about the data. One key tool for exploring datasets is visualization. Percival supports declarative data visualization through _Plot_ cells, which run JavaScript code that generates diagrams using the [Observable Plot](https://github.com/observablehq/plot) library.
 
 ╔═╡ Plot
-average_mpg => Plot.plot({
-  x: { grid: true },
-  y: { grid: true },
+average_mpg => Plot.line(average_mpg, {
+  sort: "year",
+  x: "year",
+  y: "value",
+  stroke: "country",
+}).plot({ grid: true })
+
+╔═╣ Markdown
+Here's another example of a plot on our dataset. This time, we'll make a simple scatter plot on the entire cars dataset, faceted by the country of origin.
+
+╔═╡ Plot
+cars => Plot.plot({
   marks: [
-    Plot.line(average_mpg, {
-      sort: "year",
-      x: "year",
-      y: "value",
-      stroke: "country",
+    Plot.dot(cars, {
+      x: "Horsepower",
+      y: "Miles_per_Gallon",
+      stroke: "Weight_in_lbs",
+      strokeWidth: 1.5,
     }),
+    Plot.ruleX([40]),
+    Plot.ruleY([5]),
   ],
+  facet: {
+    data: cars,
+    y: "Origin",
+  },
+  color: {
+    type: "linear",
+    range: ["steelblue", "orange"],
+    interpolate: "hcl",
+  },
+  grid: true,
 })
 
 ╔═╣ Markdown
-## Integrated Case Study
+## Real-World Case Study
 
-Let's see how all of these pieces combine together to work on a real-world dataset, where you join and piece together data from multiple different sources.
+Let's see how all of these pieces fit together to work on a real-world dataset, where you might want to combine data from multiple different sources.
 
-**TODO: NOT DONE**
+╔═╣ Markdown
+### Initial Exploration
+
+Suppose that you just got access to a collection of data about airports, and you're eager to start exploring it. The dataset is tabular and contains information such as name, geographical location, city, state, and country.
+
+╔═╡ Code
+import airports from "npm://vega-datasets@2.1.0/data/airports.csv"
+
+╔═╣ Markdown
+From looking at the rows, it seems like there are airports from multiple different countries in this dataset! Let's figure out what the value counts in the `country` column look like.
+
+╔═╡ Code
+airports_per_country(country, count) :-
+  airports(country),
+  count = count[1] { airports(country) }.
+
+╔═╣ Markdown
+It turns out that **all but 4 of the airports are in the United States**. To make the rest of our analysis simpler, we're going to filter only those airports that have country equal to `"USA"`. We're also going to reduce our columns to only the necessary ones.
+
+╔═╡ Code
+us_airports(state, iata, name) :-
+  airports(state, iata, name, country: "USA").
+
+╔═╣ Markdown
+Cool, that was really simple! Let's use another aggregate query to see how many airports are in each US state.
+
+╔═╡ Code
+airports_per_state(state, count) :-
+  us_airports(state),
+  count = count[1] { us_airports(state) }.
+
+╔═╡ Plot
+airports_per_state => Plot.plot({
+  marks: [
+    Plot.dot(airports_per_state, {
+      x: "count",
+      fill: "steelblue",
+      fillOpacity: 0.6,
+    }),
+  ],
+  grid: true,
+})
+
+╔═╣ Markdown
+It seems like most states have between 0-100 airports, with a few outliers having 200-300 airports. This makes sense, given that some states are much smaller than others, and even between states of the same size, population density can be very different!
+
+╔═╣ Markdown
+### Loading More Data
+
+We might wonder if states with higher populations have more airports. However, we don't have this information in our current table, so we'll need to find a new dataset for this. [Here's one](https://github.com/jakevdp/data-USstates) that we found, off-the-shelf, on GitHub.
+
+_(I quickly updated some of the column names in these tables to make them compatible with Percival, which is why the latter two tables are imported from Gists.)_
+
+╔═╡ Code
+import state_abbrevs from "gh://jakevdp/data-USstates@b9c5dfa/state-abbrevs.csv"
+import state_areas from "https://gist.githubusercontent.com/ekzhang/a68794f064594cf0ab56a317c3b7d121/raw/state-areas.csv"
+import state_population from "https://gist.githubusercontent.com/ekzhang/a68794f064594cf0ab56a317c3b7d121/raw/state-population.csv"
+
+╔═╣ Markdown
+Since this dataset consists of multiple tables in a slightly different format, we'll need to construct an inner join between these tables and our airports to combine them together. Luckily, this is very simple to do with a Datalog query!
+
+╔═╡ Code
+airports_state_info(state, count, population, area) :-
+  state_abbrevs(state: name, abbreviation: state),
+  airports_per_state(count, state),
+  state_population(state, population, ages: "total", year: 2013),
+  state_areas(state: name, area_sq_mi: area).
+
+╔═╡ Plot
+airports_state_info => Plot.plot({
+  marks: [
+    Plot.dot(airports_state_info, {
+      x: "population",
+      y: "count",
+      r: "area",
+      fill: "steelblue",
+      fillOpacity: 0.8,
+      title: "state",
+    }),
+    Plot.text(airports_state_info, {
+      x: "population",
+      y: "count",
+      textAnchor: "start",
+      dx: "1em",
+      text: "state",
+      fillColor: "#222",
+      fillOpacity: 0.8,
+      fontSize: d => Math.sqrt(d.area) / 50,
+    }),
+    Plot.ruleY([0]),
+    Plot.ruleX([0]),
+  ],
+  grid: true,
+})
+
+╔═╣ Markdown
+As you can see, there is a clear direct relationship between the size of a state, its population, and the number of airports in that state. The one exception to this relationship is **Alaska (AK)**, where although the population is very small, it has over 260 airports! We're also able to see that **Texas (TX)** and **California (CA)** have the second and third largest number of airports, respectively.
 
 ╔═╣ Markdown
 ## Closing
