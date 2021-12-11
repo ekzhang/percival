@@ -13,20 +13,33 @@
 
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
-    let text = starter;
-    if (params.has("gist")) {
-      try {
-        const resp = await fetch(`/api?id=${params.get("gist")!}`);
-        if (!resp.ok) {
-          throw new Error(await resp.text());
+    if (params.has("new")) {
+      // Construct an empty notebook.
+      notebookStore = createNotebookStore(new NotebookState());
+    } else {
+      // Load either the starter notebook or a Gist.
+      let text = starter;
+      if (params.has("gist")) {
+        try {
+          const resp = await fetch(`/api?id=${params.get("gist")!}`);
+          if (!resp.ok) {
+            throw new Error(await resp.text());
+          }
+          text = await resp.text();
+        } catch (error: any) {
+          alert(`Error loading notebook: ${error.message}`);
         }
-        text = await resp.text();
-      } catch (error: any) {
-        alert(`Error loading notebook: ${error.message}`);
       }
+      notebookStore = createNotebookStore(NotebookState.load(unmarshal(text)));
     }
-    notebookStore = createNotebookStore(NotebookState.load(unmarshal(text)));
   });
+
+  /** Handler to prompt the user before navigating away from the page. */
+  function beforeUnload(event: BeforeUnloadEvent) {
+    event.preventDefault();
+    event.returnValue = "";
+    return "...";
+  }
 
   let sharing: "none" | "pending" | { id: string } = "none";
 
@@ -50,6 +63,8 @@
     }
   }
 </script>
+
+<svelte:window on:beforeunload={beforeUnload} />
 
 <Header
   {sharing}

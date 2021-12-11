@@ -263,11 +263,13 @@ airports_state_info => Plot.plot({
 })
 
 ╔═╣ Markdown
-As you can see, there is a clear direct relationship between the size of a state, its population, and the number of airports in that state. The one exception to this relationship is **Alaska (AK)**, where although the population is very small, it has over 260 airports! We're also able to see that **Texas (TX)** and **California (CA)** have the second and third largest number of airports, respectively.
+As you can see, there is a clear direct relationship between the size of a state, its population, and the number of airports in that state. The one exception to this relationship is **Alaska (AK)**, where although the population is very small, it has over 260 airports! We're also able to see that **Texas (TX)** and **California (CA)** have the second and third-largest number of airports, respectively.
 
 ╔═╣ Markdown
 ## Closing
 
-Thanks for reading! Percival is at an experimental stage. If you have any comments or feedback, you can reach me at [GitHub Discussions](https://github.com/ekzhang/percival) or on Twitter [@ekzhang1](https://twitter.com/ekzhang1).
+Percival is an early-stage research project. If you have any comments or feedback, you can reach me at [GitHub Discussions](https://github.com/ekzhang/percival) or on Twitter [@ekzhang1](https://twitter.com/ekzhang1).
 
-If you like the ideas behind Percival, feel free to try it out on your own problems! By the way, if you press the "Share" button at the top of this page, you'll get a permanent link to the current notebook. Unlike Jupyter or R exports, these documents are fully interactive, and you only need a browser to continue exploring where you left off. ✨
+If you like Percival, feel free to try using it on your own problems! To create a new, blank notebook from scratch, [click here](/?new).
+
+By the way, if you press the "Share" button at the top of this page, you'll get a permanent link to the current notebook. Unlike Jupyter or R exports, these documents are fully interactive, and you only need a browser to continue exploring where you left off. ✨
