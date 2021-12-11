@@ -20,7 +20,7 @@ To get started, let's dive into the basics of the language.
 
 Datalog is a fully-featured database query language, similar to SQL. It originates from logic programming as a subset of Prolog. The basic object in Datalog is called a _relation_, and it is the equivalent of a table in traditional databases.
 
-Let's create a very simple relation that stores edges in a directed graph.
+Let's create a very simple relation that stores edges in a directed graph. This relation has two named fields, `x` and `y`.
 
 ╔═╡ Code
 // Edge relation: each line is a database entry.
@@ -29,7 +29,7 @@ edge(x: 2, y: 3).
 edge(x: 2, y: 4).
 
 ╔═╣ Markdown
-With Datalog, you can compute all paths within this graph by writing the query in the following code cell. This query consists of two _rules_, which use the `:-` notation. When we write this query, the outputs are displayed above the cell.
+With Datalog, you can compute all paths within this graph by writing the query in the following code cell. This query consists of two _rules_, which use the `:-` notation. When we run this query, its outputs are displayed above the cell.
 
 ╔═╡ Code
 // Given an edge x -> y, there is a path x -> y.
