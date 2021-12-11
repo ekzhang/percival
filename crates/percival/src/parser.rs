@@ -206,17 +206,6 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .then(string.padded().padded_by(comments))
         .map(|(name, uri)| Import { name, uri });
 
-    // let directive =
-    //     just('@')
-    //         .ignore_then(text::ident())
-    //         .try_map(|directive, span| match &directive[..] {
-    //             "mark_bar" | "mark_point" => Ok(directive),
-    //             _ => Err(Simple::custom(
-    //                 span,
-    //                 format!("Unknown directive \"{}\"", directive),
-    //             )),
-    //         });
-
     enum Entry {
         Rule(Rule),
         Import(Import),
@@ -572,16 +561,6 @@ import football from "gh://vega/vega-datasets@next/data/football.json"
             },
         );
     }
-
-    // #[test]
-    // fn parse_bad_directive() {
-    //     let parser = parser();
-    //     let text = "@bad_syntax 123";
-    //     let (_, errors) = parser.parse_recovery(text);
-    //     assert!(errors.len() == 1);
-    //     let message = format_errors(text, errors);
-    //     assert!(message.contains("Unknown directive \"bad_syntax\""));
-    // }
 
     #[test]
     fn parse_boolean() {
