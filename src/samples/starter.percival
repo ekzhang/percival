@@ -157,8 +157,8 @@ cars => Plot.plot({
   color: {
     type: "linear",
     range: ["steelblue", "orange"],
-    interpolate: "hcl",
   },
+  fy: { tickPadding: -8 },
   grid: true,
 })
 
