@@ -1,18 +1,6 @@
 import { compile } from "percival-wasm";
 import Worker from "./runtime.worker?worker&inline";
 
-// Needed to fix dependency pre-bundling issue in mocha-vite-puppeteer.
-//
-// The following lines are necessary because these libraries are not present in
-// the non-worker bundle. This makes tests get confused because they discover
-// the library mid-execution and reload the page, breaking Puppeteer.
-//
-// The extra imports do not affect performance or bundle size because of
-// automatic tree-shaking optimizations.
-import "immutable";
-import "d3-dsv";
-import "chai";
-
 interface CancellablePromise<T> extends Promise<T> {
   cancel: () => void;
 }

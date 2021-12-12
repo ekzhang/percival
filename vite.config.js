@@ -30,6 +30,9 @@ export default defineConfig({
     },
   },
   plugins: [svelte(), lezer()],
+  optimizeDeps: {
+    entries: ["index.html", "src/**/*.{test,worker}.{js,ts}"],
+  },
   server: {
     proxy: {
       "/api": {
