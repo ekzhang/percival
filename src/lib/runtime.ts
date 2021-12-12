@@ -11,6 +11,7 @@ import Worker from "./runtime.worker?worker&inline";
 // automatic tree-shaking optimizations.
 import "immutable";
 import "d3-dsv";
+import "chai";
 
 interface CancellablePromise<T> extends Promise<T> {
   cancel: () => void;

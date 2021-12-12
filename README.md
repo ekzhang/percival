@@ -6,7 +6,10 @@ for exploring complex datasets, producing interactive graphics, and sharing
 results.
 
 <p align="center">
-  <a href="https://percival.ink/"><img src="https://i.imgur.com/zW5cuBH.png" width="720"></a>
+  <a href="https://percival.ink/">
+    <img src="https://i.imgur.com/zW5cuBH.png" width="720"><br>
+    <strong>percival.ink</strong>
+  </a>
 </p>
 
 Percival combines the flexibility of
@@ -29,6 +32,10 @@ feel free to say hello at our
 [discussions page](https://github.com/ekzhang/percival/discussions)!
 
 ## Getting Started
+
+If you've gotten to this point in the README, please first try out the web
+application and demo notebook at [percival.ink](https://percival.ink/)! The
+information below is technical documentation intended for contributors.
 
 Building Percival from scratch requires [Node v16+](https://nodejs.org/en/),
 [NPM v8+](https://www.npmjs.com/), [Rust 1.56+](https://www.rust-lang.org/),
