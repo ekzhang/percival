@@ -1,0 +1,6 @@
+rolling(end_time, average) :-
+  data(time: end_time),
+  average = mean[x] {
+    data(time, x),
+    `end_time - 7 < time && time <= end_time`
+  }.

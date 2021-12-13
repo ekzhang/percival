@@ -1,0 +1,5 @@
+all_purchased(buyer) :-
+  orders_unique(buyer),
+  num_purchased = count[1] { orders_unique(buyer) },
+  num_total = count[1] { food() },
+  `num_purchased === num_total`.

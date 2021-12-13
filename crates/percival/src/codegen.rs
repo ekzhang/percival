@@ -470,7 +470,7 @@ fn cmp_new_decls(ctx: &Context) -> (Context, String) {
     for result in Rc::clone(&ctx.results).iter() {
         let name = ctx.gensym(&format!("{}_new", result));
         decls.push(format!(
-            "let {} = {}.Set().asMutable();",
+            "const {} = {}.Set().asMutable();",
             name, VAR_IMMUTABLE,
         ));
         ctx = ctx.add(VarId::New(result.clone()), name);
@@ -533,7 +533,7 @@ fn cmp_rule_incremental(
 
     let goal = format!(
         "
-let {goal} = {imm}.Map({goal_obj});
+const {goal} = {imm}.Map({goal_obj});
 if (!{set}.includes({goal})) {new}.add({goal});
 ",
         goal = VAR_GOAL,
