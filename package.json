@@ -21,6 +21,7 @@
     "@codemirror/state": "^0.19.6",
     "@codemirror/view": "^0.19.29",
     "@fontsource/source-serif-pro": "^4.5.0",
+    "@lezer/common": "^0.15.10",
     "@observablehq/plot": "^0.3.2",
     "ansi_up": "^5.1.0",
     "d3-dsv": "^3.0.1",

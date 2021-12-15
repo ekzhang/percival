@@ -1,4 +1,5 @@
 import { parser } from "./percival.grammar";
+import { parseMixed } from "@lezer/common";
 import {
   foldNodeProp,
   foldInside,
@@ -7,6 +8,7 @@ import {
   LRLanguage,
 } from "@codemirror/language";
 import { styleTags, tags as t } from "@codemirror/highlight";
+import { javascriptLanguage } from "@codemirror/lang-javascript";
 
 let parserWithMetadata = parser.configure({
   props: [
@@ -36,6 +38,15 @@ let parserWithMetadata = parser.configure({
       Rule: foldInside,
     }),
   ],
+  wrap: parseMixed((node) => {
+    if (node.type.name === "Expr") {
+      return {
+        parser: javascriptLanguage.parser,
+        overlay: [{ from: node.from + 1, to: node.to - 1 }],
+      };
+    }
+    return null;
+  }),
 });
 
 export const percivalLanguage = LRLanguage.define({
