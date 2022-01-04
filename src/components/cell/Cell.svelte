@@ -34,9 +34,7 @@
     </button>
   </button>
   <CellOutput {state} />
-  {#if !state.hidden}
-    <CellInput {state} on:change />
-  {/if}
+  <CellInput {state} on:change />
 </div>
 
 <style lang="postcss">

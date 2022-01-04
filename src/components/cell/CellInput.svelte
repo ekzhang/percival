@@ -76,7 +76,11 @@
   });
 </script>
 
-<div bind:this={editorParent} class:dirty={state.value !== currentValue} />
+<div
+  bind:this={editorParent}
+  class:dirty={state.value !== currentValue}
+  class:hidden={state.hidden}
+/>
 
 <style lang="postcss">
   .dirty :global(.cm-editor .cm-scroller) {
