@@ -7,8 +7,8 @@ use std::{
     process::{self, Command, Stdio},
 };
 
-use chumsky::prelude::*;
-use structopt::StructOpt;
+use chumsky::prelude::Parser as _;
+use clap::Parser;
 
 use percival::{
     codegen::compile,
@@ -16,21 +16,21 @@ use percival::{
 };
 
 /// Convenience CLI for testing the Percival language compiler.
-#[derive(StructOpt, Debug)]
-#[structopt(name = "Percival")]
+#[derive(Parser, Debug)]
+#[clap(name = "Percival")]
 struct Opt {
     /// Input file (default: read from stdin).
-    #[structopt(name = "FILE", parse(from_os_str))]
+    #[clap(name = "FILE", parse(from_os_str))]
     input: Option<PathBuf>,
 
     /// Runs prettier and bat on the output.
-    #[structopt(short, long)]
+    #[clap(short, long)]
     format: bool,
 }
 
 /// Run the main program.
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     let mut src = match opt.input {
         Some(path) => read_to_string(path).unwrap(),

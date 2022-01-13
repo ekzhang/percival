@@ -6,5 +6,5 @@ edition = "2021"
 
 [dependencies]
 chumsky = "0.7.0"
+clap = { version = "3.0.7", features = ["derive"] }
 percival = { path = "../percival" }
-structopt = "0.3.25"
