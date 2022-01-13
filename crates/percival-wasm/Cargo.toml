@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-chumsky = "0.6.0"
+chumsky = "0.7.0"
 console_error_panic_hook = { version = "0.1", optional = true }
 percival = { path = "../percival" }
 wasm-bindgen = "0.2"

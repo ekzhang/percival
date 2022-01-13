@@ -6,7 +6,9 @@ edition = "2021"
 
 [dependencies]
 ariadne = "0.1.3"
-chumsky = "0.6.0"
-maplit = "1.0.2"
-rpds = "0.10.0"
+chumsky = "0.7.0"
+rpds = "0.11.0"
 thiserror = "1.0.30"
+
+[dev-dependencies]
+maplit = "1.0.2"

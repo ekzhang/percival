@@ -9,22 +9,9 @@ use crate::ast::{Aggregate, Clause, Fact, Import, Literal, Program, Rule, Value}
 pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
     let id = text::ident().labelled("ident");
 
-    let keyword = |s: &'static str| {
-        text::ident::<char, Simple<_>>().validate(move |ident, span, emit| {
-            if ident != s {
-                emit(Simple::custom(span, "not an import statement"))
-            }
-            ident
-        })
-    };
-
     let comments = {
-        let single_line = just('/')
-            .then_ignore(just('/'))
-            .then_ignore(take_until(text::newline()));
-        let multi_line = just('/')
-            .then_ignore(just('*'))
-            .then_ignore(take_until(just('*').then(just('/'))));
+        let single_line = just("//").then_ignore(take_until(text::newline()));
+        let multi_line = just("/*").then_ignore(take_until(just("*/")));
         single_line
             .or(multi_line)
             .padded()
@@ -35,7 +22,7 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
     let number = {
         // We only support decimal literals for now, not the full scope of numbers.
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#numeric_literals
-        let digit = one_of('0'..='9');
+        let digit = one_of("0123456789");
         let digits = digit.then_ignore(just('_').or_not()).repeated().at_least(1);
         let sign = just('-')
             .or(just('+'))
@@ -64,7 +51,7 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         let hex_digit = filter(|&c: &char| c.is_ascii_hexdigit());
         let control_char = just('\\')
             .chain(
-                one_of("\"\\/bfnrt".chars())
+                one_of("\"\\/bfnrt")
                     .map(|c| vec![c])
                     .or(just('u').chain(hex_digit.repeated().at_least(4).at_most(4))),
             )
@@ -77,15 +64,17 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         just('"').ignore_then(chars).then_ignore(just('"'))
     };
 
-    let boolean = keyword("true")
-        .map(|_| true)
-        .or(keyword("false").map(|_| false));
+    let boolean = choice((
+        text::keyword("true").to(true),
+        text::keyword("false").to(false),
+    ));
 
-    let literal = number
-        .map(Literal::Number)
-        .or(string.clone().map(Literal::String))
-        .or(boolean.map(Literal::Boolean))
-        .labelled("literal");
+    let literal = choice((
+        number.map(Literal::Number),
+        string.clone().map(Literal::String),
+        boolean.map(Literal::Boolean),
+    ))
+    .labelled("literal");
 
     let expr = just('`')
         .ignore_then(take_until(just('`')))
@@ -119,12 +108,13 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
                 subquery,
             });
 
-        literal
-            .map(Value::Literal)
-            .or(expr.map(Value::Expr))
-            .or(aggregate.map(Value::Aggregate))
-            .or(id.map(Value::Id))
-            .labelled("value")
+        choice((
+            literal.map(Value::Literal),
+            expr.map(Value::Expr),
+            aggregate.map(Value::Aggregate),
+            id.map(Value::Id),
+        ))
+        .labelled("value")
     });
 
     let prop = id
@@ -166,12 +156,12 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         .then(value)
         .labelled("binding");
 
-    let clause = fact
-        .clone()
-        .map(Clause::Fact)
-        .or(expr.map(Clause::Expr))
-        .or(binding.map(|(name, value)| Clause::Binding(name, value)))
-        .labelled("clause");
+    let clause = choice((
+        fact.clone().map(Clause::Fact),
+        expr.map(Clause::Expr),
+        binding.map(|(name, value)| Clause::Binding(name, value)),
+    ))
+    .labelled("clause");
 
     clauses.define(
         clause
@@ -183,7 +173,7 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
 
     let rule = fact
         .then(
-            seq(":-".chars())
+            just(":-")
                 .padded()
                 .padded_by(comments)
                 .ignore_then(clauses)
@@ -195,14 +185,14 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
                         Ok(clauses)
                     }
                 })
-                .or(just('.').padded().padded_by(comments).map(|_| Vec::new())),
+                .or(just('.').padded().padded_by(comments).to(Vec::new())),
         )
         .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
 
-    let import = keyword("import")
+    let import = text::keyword("import")
         .ignore_then(text::ident().padded().padded_by(comments))
-        .then_ignore(keyword("from"))
+        .then_ignore(text::keyword("from"))
         .then(string.padded().padded_by(comments))
         .map(|(name, uri)| Import { name, uri });
 
@@ -211,9 +201,7 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         Import(Import),
     }
 
-    let program = rule
-        .map(Entry::Rule)
-        .or(import.map(Entry::Import))
+    let program = choice((rule.map(Entry::Rule), import.map(Entry::Import)))
         .padded()
         .padded_by(comments)
         .repeated()
@@ -301,7 +289,10 @@ pub fn format_errors(src: &str, errors: Vec<Simple<char>>) -> String {
                         "end of input".to_string()
                     } else {
                         e.expected()
-                            .map(|x| x.to_string())
+                            .map(|expected| match expected {
+                                Some(expected) => expected.to_string(),
+                                None => "end of input".to_string(),
+                            })
                             .collect::<Vec<_>>()
                             .join(", ")
                     }
@@ -418,7 +409,7 @@ tc(z) :- tc(z, &).";
         let (_, errors) = parser.parse_recovery(text);
         assert!(errors.len() == 1);
         let message = format_errors(text, errors);
-        assert!(message.contains("Unexpected token in input, expected )"));
+        assert!(message.contains("Unexpected token in input, expected "));
     }
 
     #[test]
