@@ -1,7 +1,8 @@
 <script lang="ts">
   import { basicSetup } from "@codemirror/basic-setup";
   import { EditorState, Compartment } from "@codemirror/state";
-  import { EditorView, KeyBinding, keymap } from "@codemirror/view";
+  import { EditorView, keymap } from "@codemirror/view";
+  import type { KeyBinding } from "@codemirror/view";
   import { indentWithTab } from "@codemirror/commands";
   import { markdown } from "@codemirror/lang-markdown";
   import { javascript } from "@codemirror/lang-javascript";

@@ -93,7 +93,7 @@
   }
 
   .markdown-output :global(h1) {
-    @apply text-4xl font-semibold my-4 border-b-2;
+    @apply text-4xl font-semibold my-4 border-b-2 border-black;
   }
   .markdown-output :global(h2) {
     @apply text-3xl font-semibold my-3;
