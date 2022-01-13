@@ -6,11 +6,7 @@ use chumsky::prelude::*;
 use wasm_bindgen::prelude::*;
 use yansi::Paint;
 
-use percival::{
-    ast::Program,
-    codegen,
-    parser::{format_errors, parser},
-};
+use percival::{ast::Program, codegen, errors::format_errors, parser::parser};
 
 /// Set a panic listener to display better error messages.
 #[wasm_bindgen(start)]

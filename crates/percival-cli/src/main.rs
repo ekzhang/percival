@@ -10,10 +10,7 @@ use std::{
 use chumsky::prelude::Parser as _;
 use clap::Parser;
 
-use percival::{
-    codegen::compile,
-    parser::{format_errors, parser},
-};
+use percival::{codegen::compile, errors::format_errors, parser::parser};
 
 /// Convenience CLI for testing the Percival language compiler.
 #[derive(Parser, Debug)]
