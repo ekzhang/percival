@@ -2,15 +2,10 @@
 
 #![warn(missing_docs)]
 
-use chumsky::prelude::*;
 use wasm_bindgen::prelude::*;
 use yansi::Paint;
 
-use percival::{
-    ast::Program,
-    codegen,
-    parser::{format_errors, parser},
-};
+use percival::{ast::Program, codegen, errors::format_errors, parser::Grammar};
 
 /// Set a panic listener to display better error messages.
 #[wasm_bindgen(start)]
@@ -29,15 +24,15 @@ pub fn start() {
 #[wasm_bindgen]
 pub fn compile(src: &str) -> CompilerResult {
     thread_local! {
-        static PARSER: BoxedParser<'static, char, Program, Simple<char>> = parser();
+        static GRAMMAR: Grammar = Grammar::new();
     }
 
     let mut src = String::from(src);
     if !src.ends_with('\n') {
         src += "\n";
     }
-    CompilerResult(PARSER.with(|parser| {
-        parser
+    CompilerResult(GRAMMAR.with(|grammar| {
+        grammar
             .parse(&src[..])
             .map_err(|err| format_errors(&src[..], err))
             .and_then(|prog| {

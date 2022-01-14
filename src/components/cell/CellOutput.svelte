@@ -48,7 +48,7 @@
 
 <style lang="postcss">
   .error {
-    @apply mb-1 p-3 rounded-sm bg-pink-100 font-mono;
+    @apply mb-1 p-3 rounded-sm bg-pink-100 font-mono overflow-auto;
   }
 
   .output {

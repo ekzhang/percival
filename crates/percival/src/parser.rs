@@ -1,23 +1,47 @@
 //! Parser definitions and error recovery for Percival.
 
-use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
-use chumsky::prelude::*;
+use std::fmt;
+
+use chumsky::{prelude::*, Stream};
 
 use crate::ast::{Aggregate, Clause, Fact, Import, Literal, Program, Rule, Value};
 
-/// Constructs a parser combinator for the Percival language.
-pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
-    let id = text::ident().labelled("ident");
+/// A range of character positions in a parser input.
+pub type Span = std::ops::Range<usize>;
 
-    let comments = {
-        let single_line = just("//").then_ignore(take_until(text::newline()));
-        let multi_line = just("/*").then_ignore(take_until(just("*/")));
-        single_line
-            .or(multi_line)
-            .padded()
-            .repeated()
-            .map_err(|e: Simple<char>| Simple::custom(e.span(), "Not a valid comment"))
-    };
+/// A token emitted from the initial lexical analysis phase.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Token {
+    /// An identifier, such as for a variable.
+    Ident(String),
+    /// A numerical constant literal.
+    Number(String),
+    /// A string literal, with optional escape sequences.
+    String(String),
+    /// A raw JavaScript expression delimited by backquotes.
+    Expr(String),
+    /// A control character understood by Percival.
+    Ctrl(&'static str),
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Token::Ident(s) => write!(f, "{}", s),
+            Token::Number(n) => write!(f, "{}", n),
+            Token::String(s) => write!(f, "\"{}\"", s),
+            Token::Expr(e) => write!(f, "`{}`", e),
+            Token::Ctrl(c) => write!(f, "{}", c),
+        }
+    }
+}
+
+/// Construct a parser combinator for lexical analysis (stage 1).
+///
+/// If possible, prefer to use the higher-level `Grammar` API directly, rather
+/// than this low-level implementation of a parser combinator.
+pub fn lexer() -> BoxedParser<'static, char, Vec<(Token, Span)>, Simple<char>> {
+    let ident = text::ident().labelled("ident");
 
     let number = {
         // We only support decimal literals for now, not the full scope of numbers.
@@ -64,44 +88,78 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         just('"').ignore_then(chars).then_ignore(just('"'))
     };
 
-    let boolean = choice((
-        text::keyword("true").to(true),
-        text::keyword("false").to(false),
-    ));
-
-    let literal = choice((
-        number.map(Literal::Number),
-        string.clone().map(Literal::String),
-        boolean.map(Literal::Boolean),
-    ))
-    .labelled("literal");
-
     let expr = just('`')
         .ignore_then(take_until(just('`')))
         .map(|(s, _)| s)
         .collect()
         .labelled("expr");
 
+    let ctrl = choice::<_, Simple<char>>((
+        just::<_, _, Simple<char>>(":-"),
+        just::<_, _, Simple<char>>("("),
+        just::<_, _, Simple<char>>(")"),
+        just::<_, _, Simple<char>>("["),
+        just::<_, _, Simple<char>>("]"),
+        just::<_, _, Simple<char>>("{"),
+        just::<_, _, Simple<char>>("}"),
+        just::<_, _, Simple<char>>(":"),
+        just::<_, _, Simple<char>>("."),
+        just::<_, _, Simple<char>>(","),
+        just::<_, _, Simple<char>>("="),
+    ));
+
+    let token = choice((
+        ident.map(Token::Ident),
+        number.map(Token::Number),
+        string.map(Token::String),
+        expr.map(Token::Expr),
+        ctrl.map(Token::Ctrl),
+    ))
+    .boxed()
+    .recover_with(skip_then_retry_until([]));
+
+    let comments = {
+        let single_line = just("//").then_ignore(take_until(text::newline()));
+        let multi_line = just("/*").then_ignore(take_until(just("*/")));
+        single_line
+            .or(multi_line)
+            .padded()
+            .repeated()
+            .map_err(|e: Simple<char>| Simple::custom(e.span(), "Not a valid comment"))
+    };
+
+    token
+        .padded()
+        .padded_by(comments)
+        .map_with_span(|tok, span| (tok, span))
+        .repeated()
+        .boxed()
+}
+
+/// Construct a parser combinator for syntactic analysis (stage 2).
+///
+/// If possible, prefer to use the higher-level `Grammar` API directly, rather
+/// than this low-level implementation of a parser combinator.
+pub fn parser() -> BoxedParser<'static, Token, Program, Simple<Token>> {
+    use Token::*;
+
+    let ident = select! { Ident(id) => id };
+
+    let literal = select! {
+        Number(n) => Literal::Number(n),
+        String(s) => Literal::String(s),
+        Ident(b) if b == "true" => Literal::Boolean(true),
+        Ident(b) if b == "false" => Literal::Boolean(false),
+    }
+    .labelled("literal");
+
     // Declared here so that we can use it for aggregate subqueries.
-    let mut clauses = Recursive::<_, Vec<Clause>, Simple<char>>::declare();
+    let mut clauses = Recursive::<_, Vec<Clause>, Simple<Token>>::declare();
 
     let value = recursive(|value| {
-        let aggregate = text::ident()
-            .then(
-                value
-                    .padded()
-                    .padded_by(comments)
-                    .delimited_by('[', ']')
-                    .padded()
-                    .padded_by(comments),
-            )
-            .then(
-                clauses
-                    .clone()
-                    .padded()
-                    .padded_by(comments)
-                    .delimited_by('{', '}'),
-            )
+        let aggregate = ident
+            .then(value.delimited_by(Ctrl("["), Ctrl("]")))
+            .then(clauses.clone().delimited_by(Ctrl("{"), Ctrl("}")))
             .map(|((operator, value), subquery)| Aggregate {
                 operator,
                 value: Box::new(value),
@@ -109,26 +167,22 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
             });
 
         choice((
-            literal.map(Value::Literal),
-            expr.map(Value::Expr),
             aggregate.map(Value::Aggregate),
-            id.map(Value::Id),
+            literal.map(Value::Literal),
+            select! {
+                Expr(e) => Value::Expr(e),
+                Ident(id) => Value::Id(id),
+            },
         ))
         .labelled("value")
     });
 
-    let prop = id
-        .then(
-            just(':')
-                .padded()
-                .padded_by(comments)
-                .ignore_then(value.clone())
-                .or_not(),
-        )
+    let prop = ident
+        .then(just(Ctrl(":")).ignore_then(value.clone()).or_not())
         .try_map(|(id, value), span| {
             let value = value.unwrap_or_else(|| Value::Id(id.clone()));
             match &value {
-                Value::Id(id) if is_reserved_word(id) => Err(Simple::custom(
+                Value::Id(name) if is_reserved_word(name) => Err(Simple::custom(
                     span,
                     "Cannot use reserved word as a variable binding",
                 )),
@@ -137,22 +191,21 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
         })
         .labelled("prop");
 
-    let fact = text::ident()
+    let fact = ident
         .then(
-            prop.padded()
-                .padded_by(comments)
-                .separated_by(just(','))
-                .delimited_by('(', ')'),
+            prop.separated_by(just(Ctrl(",")))
+                .delimited_by(Ctrl("("), Ctrl(")")),
         )
         .map(|(name, props)| Fact {
             name,
             props: props.into_iter().collect(),
         })
-        .labelled("fact")
-        .boxed(); // boxed to avoid rustc recursion limit
+        .labelled("fact");
 
-    let binding = id
-        .then_ignore(just('=').padded().padded_by(comments))
+    let expr = select! { Expr(e) => e };
+
+    let binding = ident
+        .then_ignore(just(Ctrl("=")))
         .then(value)
         .labelled("binding");
 
@@ -163,21 +216,13 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
     ))
     .labelled("clause");
 
-    clauses.define(
-        clause
-            .clone()
-            .padded()
-            .padded_by(comments)
-            .separated_by(just(',')),
-    );
+    clauses.define(clause.clone().separated_by(just(Ctrl(","))));
 
     let rule = fact
         .then(
-            just(":-")
-                .padded()
-                .padded_by(comments)
+            just(Ctrl(":-"))
                 .ignore_then(clauses)
-                .then_ignore(just('.'))
+                .then_ignore(just(Ctrl(".")))
                 .try_map(|clauses, span| {
                     if clauses.is_empty() {
                         Err(Simple::custom(span, "Rule needs at least one clause"))
@@ -185,15 +230,15 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
                         Ok(clauses)
                     }
                 })
-                .or(just('.').padded().padded_by(comments).to(Vec::new())),
+                .or(just(Ctrl(".")).to(Vec::new())),
         )
         .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
 
-    let import = text::keyword("import")
-        .ignore_then(text::ident().padded().padded_by(comments))
-        .then_ignore(text::keyword("from"))
-        .then(string.padded().padded_by(comments))
+    let import = select! { Ident(k) if k == "import" => () }
+        .ignore_then(ident)
+        .then_ignore(select! { Ident(k) if k == "from" => () })
+        .then(select! { String(s) => s })
         .map(|(name, uri)| Import { name, uri });
 
     enum Entry {
@@ -202,8 +247,6 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
     }
 
     let program = choice((rule.map(Entry::Rule), import.map(Entry::Import)))
-        .padded()
-        .padded_by(comments)
         .repeated()
         .map(|entries| {
             let mut rules = Vec::new();
@@ -217,11 +260,7 @@ pub fn parser() -> BoxedParser<'static, char, Program, Simple<char>> {
             Program { rules, imports }
         });
 
-    program
-        .padded()
-        .padded_by(comments)
-        .then_ignore(end())
-        .boxed()
+    program.then_ignore(end()).boxed()
 }
 
 /// Checks if a token is reserved, which cannot be used as an identifier.
@@ -245,431 +284,47 @@ fn is_reserved_word(name: &str) -> bool {
     }
 }
 
-/// Format parser errors into a human-readable message.
-pub fn format_errors(src: &str, errors: Vec<Simple<char>>) -> String {
-    let mut reports = vec![];
-
-    for e in errors {
-        let e = e.map(|tok| tok.to_string());
-        let report = Report::build(ReportKind::Error, (), e.span().start);
-
-        let report = match e.reason() {
-            chumsky::error::SimpleReason::Unclosed { span, delimiter } => report
-                .with_message(format!(
-                    "Unclosed delimiter {}",
-                    delimiter.fg(Color::Yellow)
-                ))
-                .with_label(
-                    Label::new(span.clone())
-                        .with_message(format!(
-                            "Unclosed delimiter {}",
-                            delimiter.fg(Color::Yellow)
-                        ))
-                        .with_color(Color::Yellow),
-                )
-                .with_label(
-                    Label::new(e.span())
-                        .with_message(format!(
-                            "Must be closed before this {}",
-                            e.found()
-                                .unwrap_or(&"end of file".to_string())
-                                .fg(Color::Red)
-                        ))
-                        .with_color(Color::Red),
-                ),
-            chumsky::error::SimpleReason::Unexpected => report
-                .with_message(format!(
-                    "{}, expected {}",
-                    if e.found().is_some() {
-                        "Unexpected token in input"
-                    } else {
-                        "Unexpected end of input"
-                    },
-                    if e.expected().len() == 0 {
-                        "end of input".to_string()
-                    } else {
-                        e.expected()
-                            .map(|expected| match expected {
-                                Some(expected) => expected.to_string(),
-                                None => "end of input".to_string(),
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    }
-                ))
-                .with_label(
-                    Label::new(e.span())
-                        .with_message(format!(
-                            "Unexpected token {}",
-                            e.found()
-                                .unwrap_or(&"end of file".to_string())
-                                .fg(Color::Red)
-                        ))
-                        .with_color(Color::Red),
-                ),
-            chumsky::error::SimpleReason::Custom(msg) => report.with_message(msg).with_label(
-                Label::new(e.span())
-                    .with_message(format!("{}", msg.fg(Color::Red)))
-                    .with_color(Color::Red),
-            ),
-        };
-
-        let mut buf = vec![];
-        report.finish().write(Source::from(&src), &mut buf).unwrap();
-        reports.push(std::str::from_utf8(&buf[..]).unwrap().to_string());
-    }
-
-    reports.join("\n")
+/// An end-to-end grammar, combining lexing and parsing stages.
+#[derive(Clone)]
+pub struct Grammar {
+    lexer: BoxedParser<'static, char, Vec<(Token, Span)>, Simple<char>>,
+    parser: BoxedParser<'static, Token, Program, Simple<Token>>,
 }
 
-#[cfg(test)]
-mod tests {
-    use chumsky::prelude::*;
-    use maplit::btreemap;
-
-    use super::{format_errors, parser};
-    use crate::ast::{Aggregate, Clause, Fact, Import, Literal, Program, Rule, Value};
-
-    #[test]
-    fn parse_single_rule() {
-        let parser = parser();
-        let result = parser.parse("tc(x, y) :- tc(x, y: z), edge(x: z, y).");
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Program {
-                rules: vec![Rule {
-                    goal: Fact {
-                        name: "tc".into(),
-                        props: btreemap! {
-                            "x".into() => Value::Id("x".into()),
-                            "y".into() => Value::Id("y".into()),
-                        },
-                    },
-                    clauses: vec![
-                        Clause::Fact(Fact {
-                            name: "tc".into(),
-                            props: btreemap! {
-                                "x".into() => Value::Id("x".into()),
-                                "y".into() => Value::Id("z".into()),
-                            },
-                        }),
-                        Clause::Fact(Fact {
-                            name: "edge".into(),
-                            props: btreemap! {
-                                "x".into() => Value::Id("z".into()),
-                                "y".into() => Value::Id("y".into()),
-                            },
-                        }),
-                    ],
-                }],
-                imports: vec![],
-            },
-        );
+impl Grammar {
+    /// Construct a new grammar for the Percival language.
+    pub fn new() -> Self {
+        Self {
+            lexer: lexer(),
+            parser: parser(),
+        }
     }
 
-    #[test]
-    fn parse_no_clauses() {
-        let parser = parser();
-        let result = parser.parse("person(name, age).");
-        assert!(result.is_ok());
-        let result = parser.parse("person(name, age) :-.");
-        assert!(result.is_err());
+    /// Parse an input source file, returning the program or a list of errors.
+    pub fn parse(&self, src: &str) -> Result<Program, Vec<Simple<String>>> {
+        let (tokens, errs) = self.lexer.parse_recovery(src);
+        let mut errs: Vec<_> = errs.into_iter().map(|e| e.map(|c| c.to_string())).collect();
+
+        if let Some(tokens) = tokens {
+            // println!("Tokens = {:?}", tokens);
+            let len = src.chars().count();
+            let stream = Stream::from_iter(len..len + 1, tokens.into_iter());
+            let (prog, parse_errs) = self.parser.parse_recovery(stream);
+            match prog {
+                Some(prog) if errs.is_empty() && parse_errs.is_empty() => Ok(prog),
+                _ => {
+                    errs.extend(parse_errs.into_iter().map(|e| e.map(|c| c.to_string())));
+                    Err(errs)
+                }
+            }
+        } else {
+            Err(errs)
+        }
     }
+}
 
-    #[test]
-    fn parse_literal() {
-        let parser = parser();
-        let result = parser.parse("person(name: \"eric\\t\", age: 20, weight: 1.234e+2).");
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Program {
-                rules: vec![Rule {
-                    goal: Fact {
-                        name: "person".into(),
-                        props: btreemap! {
-                            "name".into() => Value::Literal(Literal::String("eric\\t".into())),
-                            "age".into() => Value::Literal(Literal::Number("20".into())),
-                            "weight".into() => Value::Literal(Literal::Number("1.234e+2".into())),
-                        },
-                    },
-                    clauses: vec![],
-                }],
-                imports: vec![],
-            },
-        );
-    }
-
-    #[test]
-    fn parse_err() {
-        let parser = parser();
-        let text = "tc(x, y) :- f(.
-tc(z) :- tc(z, &).";
-        let (_, errors) = parser.parse_recovery(text);
-        assert!(errors.len() == 1);
-        let message = format_errors(text, errors);
-        assert!(message.contains("Unexpected token in input, expected "));
-    }
-
-    #[test]
-    fn parse_reserved_word() {
-        let parser = parser();
-        let text = "bad(x: continue).";
-        let (_, errors) = parser.parse_recovery(text);
-        assert!(errors.len() == 1);
-        let message = format_errors(text, errors);
-        assert!(message.contains("Cannot use reserved word as a variable binding"));
-
-        let text = "bad(x: __percival_first_iteration).";
-        let (_, errors) = parser.parse_recovery(text);
-        assert!(errors.len() == 1);
-
-        // It is okay to use a reserved word as a field name, just not a variable.
-        let text = "ok(continue: x).";
-        let (_, errors) = parser.parse_recovery(text);
-        assert!(errors.is_empty());
-    }
-
-    #[test]
-    fn parse_js_expr() {
-        let parser = parser();
-        let result = parser.parse("ok(x: `2 * num`) :- input(x: num), `num < 10`.");
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Program {
-                rules: vec![Rule {
-                    goal: Fact {
-                        name: "ok".into(),
-                        props: btreemap! {
-                            "x".into() => Value::Expr("2 * num".into()),
-                        },
-                    },
-                    clauses: vec![
-                        Clause::Fact(Fact {
-                            name: "input".into(),
-                            props: btreemap! {
-                                "x".into() => Value::Id("num".into()),
-                            },
-                        }),
-                        Clause::Expr("num < 10".into()),
-                    ],
-                }],
-                imports: vec![],
-            },
-        );
-    }
-
-    #[test]
-    fn parse_comments() {
-        let parser = parser();
-        let result = parser.parse(
-            "
-hello(x: /* asdf */ 3) :-
-    // a comment!
-    world(k) /* another comment */,
-    `k < 10`.
-"
-            .trim(),
-        );
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn parse_whitespace() {
-        let parser = parser();
-        let result = parser.parse("\n\n\n");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn parse_trailing_eof_comment() {
-        // This example technically invalid under our grammar; however, most
-        // users would usually want to allow for comments at the end of a cell.
-        // To fix this, Percival programs should be terminated by newlines.
-        let parser = parser();
-        let result = parser.parse("// this comment has no trailing newline");
-        assert!(result.is_err());
-
-        let result = parser.parse("// this comment has a trailing newline\n");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn parse_empty() {
-        let parser = parser();
-        let result = parser.parse("any() :- ok().");
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Program {
-                rules: vec![Rule {
-                    goal: Fact {
-                        name: "any".into(),
-                        props: btreemap! {},
-                    },
-                    clauses: vec![Clause::Fact(Fact {
-                        name: "ok".into(),
-                        props: btreemap! {},
-                    })],
-                }],
-                imports: vec![],
-            },
-        );
-    }
-
-    #[test]
-    fn parse_imports() {
-        let parser = parser();
-        let result = parser.parse(
-            r#"
-import hello from "https://example.com/hello.json"
-import barley from "npm://vega-datasets/data/barley.json"
-import football from "gh://vega/vega-datasets@next/data/football.json"
-"#
-            .trim(),
-        );
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Program {
-                rules: vec![],
-                imports: vec![
-                    Import {
-                        name: "hello".into(),
-                        uri: "https://example.com/hello.json".into()
-                    },
-                    Import {
-                        name: "barley".into(),
-                        uri: "npm://vega-datasets/data/barley.json".into()
-                    },
-                    Import {
-                        name: "football".into(),
-                        uri: "gh://vega/vega-datasets@next/data/football.json".into()
-                    },
-                ],
-            },
-        );
-    }
-
-    #[test]
-    fn parse_boolean() {
-        let parser = parser();
-        let result = parser.parse("hello(x: true, y: false).");
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Program {
-                rules: vec![Rule {
-                    goal: Fact {
-                        name: "hello".into(),
-                        props: btreemap! {
-                            "x".into() => Value::Literal(Literal::Boolean(true)),
-                            "y".into() => Value::Literal(Literal::Boolean(false)),
-                        },
-                    },
-                    clauses: vec![],
-                }],
-                imports: vec![],
-            },
-        );
-    }
-
-    #[test]
-    fn parse_import_edge_cases() {
-        let parser = parser();
-        let result = parser.parse("importhello from \"gh://hello\"");
-        assert!(result.is_err());
-
-        let result = parser.parse("importa(value: 3).");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn parse_binding() {
-        let parser = parser();
-        let result = parser.parse(
-            r#"
-ok(val) :-
-    attempt(x),
-    val = `3 * x`.
-"#,
-        );
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Program {
-                rules: vec![Rule {
-                    goal: Fact {
-                        name: "ok".into(),
-                        props: btreemap! {
-                            "val".into() => Value::Id("val".into()),
-                        },
-                    },
-                    clauses: vec![
-                        Clause::Fact(Fact {
-                            name: "attempt".into(),
-                            props: btreemap! {
-                                "x".into() => Value::Id("x".into()),
-                            },
-                        }),
-                        Clause::Binding("val".into(), Value::Expr("3 * x".into())),
-                    ],
-                }],
-                imports: vec![],
-            },
-        );
-    }
-
-    #[test]
-    fn parse_aggregate() {
-        let parser = parser();
-        let result = parser.parse(
-            r#"
-ok(value) :-
-    year(year),
-    value = mean[mpg] {
-        cars(Year: year, mpg)
-    }.
-"#,
-        );
-        assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            Program {
-                rules: vec![Rule {
-                    goal: Fact {
-                        name: "ok".into(),
-                        props: btreemap! {
-                            "value".into() => Value::Id("value".into()),
-                        },
-                    },
-                    clauses: vec![
-                        Clause::Fact(Fact {
-                            name: "year".into(),
-                            props: btreemap! {
-                                "year".into() => Value::Id("year".into()),
-                            },
-                        }),
-                        Clause::Binding(
-                            "value".into(),
-                            Value::Aggregate(Aggregate {
-                                operator: "mean".into(),
-                                value: Box::new(Value::Id("mpg".into())),
-                                subquery: vec![Clause::Fact(Fact {
-                                    name: "cars".into(),
-                                    props: btreemap! {
-                                        "Year".into() => Value::Id("year".into()),
-                                        "mpg".into() => Value::Id("mpg".into()),
-                                    },
-                                }),],
-                            }),
-                        ),
-                    ],
-                }],
-                imports: vec![],
-            },
-        );
+impl Default for Grammar {
+    fn default() -> Self {
+        Self::new()
     }
 }
