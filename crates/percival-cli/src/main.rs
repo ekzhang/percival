@@ -7,10 +7,9 @@ use std::{
     process::{self, Command, Stdio},
 };
 
-use chumsky::prelude::Parser as _;
 use clap::Parser;
 
-use percival::{codegen::compile, errors::format_errors, parser::parser};
+use percival::{codegen::compile, errors::format_errors, parser::Grammar};
 
 /// Convenience CLI for testing the Percival language compiler.
 #[derive(Parser, Debug)]
@@ -41,8 +40,8 @@ fn main() {
         src += "\n";
     }
 
-    let parser = parser();
-    let prog = match parser.parse(&src[..]) {
+    let grammar = Grammar::new();
+    let prog = match grammar.parse(&src[..]) {
         Ok(prog) => prog,
         Err(errors) => {
             eprintln!("{}", format_errors(&src, errors));

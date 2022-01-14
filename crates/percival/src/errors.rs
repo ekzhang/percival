@@ -4,11 +4,10 @@ use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
 /// Format parser errors into a human-readable message.
-pub fn format_errors(src: &str, errors: Vec<Simple<char>>) -> String {
+pub fn format_errors(src: &str, errors: Vec<Simple<String>>) -> String {
     let mut reports = vec![];
 
     for e in errors {
-        let e = e.map(|tok| tok.to_string());
         let report = Report::build(ReportKind::Error, (), e.span().start);
 
         let report = match e.reason() {

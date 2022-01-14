@@ -1,16 +1,15 @@
-use chumsky::prelude::*;
 use maplit::btreemap;
 
 use percival::{
     ast::{Aggregate, Clause, Fact, Import, Literal, Program, Rule, Value},
     errors::format_errors,
-    parser::parser,
+    parser::Grammar,
 };
 
 #[test]
 fn parse_single_rule() {
-    let parser = parser();
-    let result = parser.parse("tc(x, y) :- tc(x, y: z), edge(x: z, y).");
+    let grammar = Grammar::new();
+    let result = grammar.parse("tc(x, y) :- tc(x, y: z), edge(x: z, y).");
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),
@@ -47,17 +46,17 @@ fn parse_single_rule() {
 
 #[test]
 fn parse_no_clauses() {
-    let parser = parser();
-    let result = parser.parse("person(name, age).");
+    let grammar = Grammar::new();
+    let result = grammar.parse("person(name, age).");
     assert!(result.is_ok());
-    let result = parser.parse("person(name, age) :-.");
+    let result = grammar.parse("person(name, age) :-.");
     assert!(result.is_err());
 }
 
 #[test]
 fn parse_literal() {
-    let parser = parser();
-    let result = parser.parse("person(name: \"eric\\t\", age: 20, weight: 1.234e+2).");
+    let grammar = Grammar::new();
+    let result = grammar.parse("person(name: \"eric\\t\", age: 20, weight: 1.234e+2).");
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),
@@ -80,38 +79,38 @@ fn parse_literal() {
 
 #[test]
 fn parse_err() {
-    let parser = parser();
+    let grammar = Grammar::new();
     let text = "tc(x, y) :- f(.
 tc(z) :- tc(z, &).";
-    let (_, errors) = parser.parse_recovery(text);
-    assert!(errors.len() == 1);
+    let errors = grammar.parse(text).unwrap_err();
+    assert!(errors.len() == 2);
     let message = format_errors(text, errors);
     assert!(message.contains("Unexpected token in input, expected "));
 }
 
 #[test]
 fn parse_reserved_word() {
-    let parser = parser();
+    let grammar = Grammar::new();
     let text = "bad(x: continue).";
-    let (_, errors) = parser.parse_recovery(text);
+    let errors = grammar.parse(text).unwrap_err();
     assert!(errors.len() == 1);
     let message = format_errors(text, errors);
     assert!(message.contains("Cannot use reserved word as a variable binding"));
 
     let text = "bad(x: __percival_first_iteration).";
-    let (_, errors) = parser.parse_recovery(text);
+    let errors = grammar.parse(text).unwrap_err();
     assert!(errors.len() == 1);
 
     // It is okay to use a reserved word as a field name, just not a variable.
     let text = "ok(continue: x).";
-    let (_, errors) = parser.parse_recovery(text);
-    assert!(errors.is_empty());
+    let result = grammar.parse(text);
+    assert!(result.is_ok());
 }
 
 #[test]
 fn parse_js_expr() {
-    let parser = parser();
-    let result = parser.parse("ok(x: `2 * num`) :- input(x: num), `num < 10`.");
+    let grammar = Grammar::new();
+    let result = grammar.parse("ok(x: `2 * num`) :- input(x: num), `num < 10`.");
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),
@@ -140,8 +139,8 @@ fn parse_js_expr() {
 
 #[test]
 fn parse_comments() {
-    let parser = parser();
-    let result = parser.parse(
+    let grammar = Grammar::new();
+    let result = grammar.parse(
         "
 hello(x: /* asdf */ 3) :-
     // a comment!
@@ -155,8 +154,8 @@ hello(x: /* asdf */ 3) :-
 
 #[test]
 fn parse_whitespace() {
-    let parser = parser();
-    let result = parser.parse("\n\n\n");
+    let grammar = Grammar::new();
+    let result = grammar.parse("\n\n\n");
     assert!(result.is_ok());
 }
 
@@ -165,18 +164,18 @@ fn parse_trailing_eof_comment() {
     // This example technically invalid under our grammar; however, most
     // users would usually want to allow for comments at the end of a cell.
     // To fix this, Percival programs should be terminated by newlines.
-    let parser = parser();
-    let result = parser.parse("// this comment has no trailing newline");
+    let grammar = Grammar::new();
+    let result = grammar.parse("// this comment has no trailing newline");
     assert!(result.is_err());
 
-    let result = parser.parse("// this comment has a trailing newline\n");
+    let result = grammar.parse("// this comment has a trailing newline\n");
     assert!(result.is_ok());
 }
 
 #[test]
 fn parse_empty() {
-    let parser = parser();
-    let result = parser.parse("any() :- ok().");
+    let grammar = Grammar::new();
+    let result = grammar.parse("any() :- ok().");
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),
@@ -198,8 +197,8 @@ fn parse_empty() {
 
 #[test]
 fn parse_imports() {
-    let parser = parser();
-    let result = parser.parse(
+    let grammar = Grammar::new();
+    let result = grammar.parse(
         r#"
 import hello from "https://example.com/hello.json"
 import barley from "npm://vega-datasets/data/barley.json"
@@ -232,8 +231,8 @@ import football from "gh://vega/vega-datasets@next/data/football.json"
 
 #[test]
 fn parse_boolean() {
-    let parser = parser();
-    let result = parser.parse("hello(x: true, y: false).");
+    let grammar = Grammar::new();
+    let result = grammar.parse("hello(x: true, y: false).");
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),
@@ -255,18 +254,18 @@ fn parse_boolean() {
 
 #[test]
 fn parse_import_edge_cases() {
-    let parser = parser();
-    let result = parser.parse("importhello from \"gh://hello\"");
+    let grammar = Grammar::new();
+    let result = grammar.parse("importhello from \"gh://hello\"");
     assert!(result.is_err());
 
-    let result = parser.parse("importa(value: 3).");
+    let result = grammar.parse("importa(value: 3).");
     assert!(result.is_ok());
 }
 
 #[test]
 fn parse_binding() {
-    let parser = parser();
-    let result = parser.parse(
+    let grammar = Grammar::new();
+    let result = grammar.parse(
         r#"
 ok(val) :-
     attempt(x),
@@ -301,8 +300,8 @@ ok(val) :-
 
 #[test]
 fn parse_aggregate() {
-    let parser = parser();
-    let result = parser.parse(
+    let grammar = Grammar::new();
+    let result = grammar.parse(
         r#"
 ok(value) :-
     year(year),

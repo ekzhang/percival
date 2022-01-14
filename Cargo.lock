@@ -249,7 +249,6 @@ dependencies = [
 name = "percival-cli"
 version = "0.1.0"
 dependencies = [
- "chumsky",
  "clap",
  "percival",
 ]
@@ -258,7 +257,6 @@ dependencies = [
 name = "percival-wasm"
 version = "0.1.0"
 dependencies = [
- "chumsky",
  "console_error_panic_hook",
  "percival",
  "wasm-bindgen",
