@@ -250,7 +250,7 @@ airports_state_info => Plot.plot({
       x: "population",
       y: "count",
       textAnchor: "start",
-      dx: "1em",
+      dx: 6,
       text: "state",
       fillColor: "#222",
       fillOpacity: 0.8,
