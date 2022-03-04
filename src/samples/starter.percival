@@ -65,7 +65,7 @@ name(full_name: `first + " " + last`, sqrt_age) :-
   person(first, last, age),
   sqrt_age = `Math.sqrt(age)`.
 
-person(first: "Eric", last: "Zhang", age: 20).
+person(first: "Alice", last: "Carol", age: 20).
 person(first: "Foo", last: "Bar", age: 45).
 person(first: "Baz", last: "Lam", age: 12).
 
