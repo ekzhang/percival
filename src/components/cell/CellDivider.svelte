@@ -25,8 +25,10 @@
 
 <style lang="postcss">
   .divider {
-    @apply h-2 relative flex justify-center items-center transition-opacity
+    z-index: 10;
+    @apply -my-1 py-1 relative flex justify-center items-center transition-opacity
       opacity-0 hover:opacity-100 focus:opacity-100;
+    /* @apply border border-dotted border-red-500; */
   }
 
   .divider.visible {
