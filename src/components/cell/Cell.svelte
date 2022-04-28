@@ -40,7 +40,6 @@
 <style lang="postcss">
   .cell {
     @apply relative min-h-[32px] my-0;
-    /* @apply border border-dotted border-red-500; */
   }
 
   .cell:hover .sidebar {
