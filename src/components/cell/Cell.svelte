@@ -39,7 +39,7 @@
 
 <style lang="postcss">
   .cell {
-    @apply relative min-h-[32px];
+    @apply relative min-h-[32px] my-0;
   }
 
   .cell:hover .sidebar {

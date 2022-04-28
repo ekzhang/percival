@@ -5,36 +5,29 @@
   const dispatch = createEventDispatcher();
 
   export let visible: boolean = false;
+
+  const types = [
+    { type: "code", label: "Code Cell" },
+    { type: "markdown", label: "Markdown Cell" },
+    { type: "plot", label: "Plot Cell" },
+  ];
 </script>
 
 <div class="divider" class:visible>
   <hr />
-  <button on:click={() => dispatch("create", { type: "code" })} tabindex="-1">
-    <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
-    <span>Code Cell</span>
-  </button>
-  <button
-    on:click={() => dispatch("create", { type: "markdown" })}
-    tabindex="-1"
-    class="ml-4"
-  >
-    <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
-    <span>Markdown Cell</span>
-  </button>
-  <button
-    on:click={() => dispatch("create", { type: "plot" })}
-    tabindex="-1"
-    class="ml-4"
-  >
-    <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
-    <span>Plot Cell</span>
-  </button>
+  {#each types as { type, label }}
+    <button on:click={() => dispatch("create", { type })} tabindex="-1">
+      <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
+      <span>{label}</span>
+    </button>
+  {/each}
 </div>
 
 <style lang="postcss">
   .divider {
-    @apply h-2 relative flex justify-center items-center transition-opacity
-      opacity-0 hover:opacity-100 focus:opacity-100;
+    z-index: 10;
+    @apply -my-1 py-1 relative flex justify-center items-center transition-opacity
+      space-x-4 opacity-0 hover:opacity-100 focus:opacity-100;
   }
 
   .divider.visible {
