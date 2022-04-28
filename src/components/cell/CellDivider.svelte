@@ -5,30 +5,22 @@
   const dispatch = createEventDispatcher();
 
   export let visible: boolean = false;
+
+  const types = [
+    { type: "code", label: "Code Cell" },
+    { type: "markdown", label: "Markdown Cell" },
+    { type: "plot", label: "Plot Cell" },
+  ];
 </script>
 
 <div class="divider" class:visible>
+  {#each types as { type, label }}
+    <button on:click={() => dispatch("create", { type })} tabindex="-1">
+      <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
+      <span>{label}</span>
+    </button>
+  {/each}
   <hr />
-  <button on:click={() => dispatch("create", { type: "code" })} tabindex="-1">
-    <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
-    <span>Code Cell</span>
-  </button>
-  <button
-    on:click={() => dispatch("create", { type: "markdown" })}
-    tabindex="-1"
-    class="ml-4"
-  >
-    <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
-    <span>Markdown Cell</span>
-  </button>
-  <button
-    on:click={() => dispatch("create", { type: "plot" })}
-    tabindex="-1"
-    class="ml-4"
-  >
-    <div class="h-3 w-3 mr-[4px]"><FaPlus /></div>
-    <span>Plot Cell</span>
-  </button>
 </div>
 
 <style lang="postcss">
@@ -48,5 +40,9 @@
   .divider > button {
     @apply flex items-center bg-white z-10 px-2.5 py-1 text-xs rounded-md shadow
       transition-colors hover:bg-gray-50 active:bg-gray-200;
+  }
+
+  .divider > button:not(:first-child) {
+    @apply ml-4;
   }
 </style>
