@@ -4,7 +4,7 @@ import remarkParse from "remark-parse";
 import remarkMath from "remark-math";
 import remarkRehype from "remark-rehype";
 import rehypeSlug from "rehype-slug";
-import rehypeAutolinkHeadings from 'rehype-autolink-headings'
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeKatex from "rehype-katex";
 import rehypeStringify from "rehype-stringify";
 
@@ -13,7 +13,7 @@ const pipeline = unified()
   .use(remarkMath)
   .use(remarkRehype)
   .use(rehypeSlug)
-  .use(rehypeAutolinkHeadings, { behavior: 'append' })
+  .use(rehypeAutolinkHeadings, { behavior: "append" })
   .use(rehypeKatex)
   .use(rehypeStringify);
 
