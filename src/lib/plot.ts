@@ -10,6 +10,7 @@ type PlotResultOk = {
   ok: true;
   evaluate: (data: object[]) => EvalPromise;
   deps: string[];
+  results: string[];
 };
 
 type PlotResultErr = {
@@ -30,16 +31,41 @@ export function buildPlot(src: string): PlotResult {
         return promise as EvalPromise;
       },
       deps: [],
+      results: [],
     };
   }
 
-  const result = src.match(/^\s*([a-zA-Z_$][a-zA-Z_$0-9]*)\s*=>/);
-  if (result === null) {
+  // TODO: plot with multiple inputs, single output
+  // https://svelte.dev/repl/be2cbfee41bd416fb812b15c119d086c?version=3.48.0
+  const nameFragment = `[a-zA-Z_$][a-zA-Z_$0-9]*`;
+  const resultNameFragment = `(?<resultName>${nameFragment})\\s*=\\s*`;
+  const nextDepNameFragment = `(?:\\s*,\\s*(${nameFragment}))?`;
+  const either = (l: string, r: string) =>
+    "(?:" + [l, r].map((s) => `(?:${s})`).join("|") + ")";
+  const fullArgumentsList = [
+    `\\(?`,
+    `(${nameFragment})`,
+    ...new Array(10).fill(undefined).map(() => nextDepNameFragment),
+    `\\)?`,
+  ].join("");
+  const emptyArgumentsList = `\\(\\s*\\)`;
+  const argumentsList = either(emptyArgumentsList, fullArgumentsList);
+  const regexp = new RegExp(
+    `^\\s*(?:${resultNameFragment})?(?:async\\s+)?${argumentsList}\\s*=>`,
+  );
+
+  const parsed = src.match(regexp);
+  if (parsed === null) {
     return {
       ok: false,
       error: "Expected plot cell to start with `name =>` syntax",
     };
   }
+
+  const resultName = parsed.groups?.resultName;
+  const deps = Array.from(parsed.slice(2)).filter(
+    (s) => s !== undefined && s !== null,
+  );
 
   return {
     ok: true,
@@ -64,6 +90,7 @@ export function buildPlot(src: string): PlotResult {
       };
       return promise as EvalPromise;
     },
-    deps: [result[1]],
+    deps,
+    results: resultName ? [resultName] : [],
   };
 }
