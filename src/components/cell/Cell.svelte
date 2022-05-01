@@ -8,6 +8,7 @@
   import type { CellState } from "@/lib/notebook";
   import CellInput from "./CellInput.svelte";
   import CellOutput from "./CellOutput.svelte";
+import AstView from "./output/ASTView.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -35,6 +36,9 @@
   </button>
   <CellOutput {state} />
   <CellInput {state} on:change />
+  {#if state.type === "code" && state.result.ok}
+    <AstView ast={state.result.ast} />
+  {/if}
 </div>
 
 <style lang="postcss">

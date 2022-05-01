@@ -36,6 +36,7 @@
     "remark-rehype": "^10.1.0",
     "svelte": "^3.46.6",
     "svelte-icons": "^2.1.0",
+    "svelte-json-tree": "^1.0.0",
     "unified": "^10.1.2"
   },
   "devDependencies": {

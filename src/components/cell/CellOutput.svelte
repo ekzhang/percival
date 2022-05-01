@@ -38,7 +38,7 @@
   >
     {#if state.output !== undefined}
       {#if state.type === "code"}
-        <FullView value={state.output} />
+        <FullView value={state.output} ast={state.result.ast} />
       {:else}
         <PlotView value={state.output} />
       {/if}
