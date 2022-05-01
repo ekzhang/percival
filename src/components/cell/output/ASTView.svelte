@@ -8,7 +8,7 @@ import { onMount } from "svelte";
 
   onMount(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('ast')) {
+    if (params.has('debug')) {
       showAst = true;
     }
   })
