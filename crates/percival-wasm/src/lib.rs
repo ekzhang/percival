@@ -36,7 +36,7 @@ pub fn compile(src: &str) -> CompilerResult {
             .parse(&src[..])
             .map_err(|err| format_errors(&src[..], err))
             .and_then(|prog| {
-                let js = codegen::compile(&prog)
+                let js = codegen_js::compile(&prog)
                     .map_err(|err| format!("{} {}", Paint::red("Error:"), err))?;
                 Ok((prog, js))
             })

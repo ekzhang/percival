@@ -4,6 +4,7 @@
 #![warn(missing_docs)]
 
 pub mod ast;
-pub mod codegen;
+pub mod codegen_js;
+pub mod codegen_json;
 pub mod errors;
 pub mod parser;
