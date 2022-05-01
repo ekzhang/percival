@@ -13,7 +13,7 @@ default = ["console_error_panic_hook"]
 [dependencies]
 console_error_panic_hook = { version = "0.1", optional = true }
 percival = { path = "../percival" }
-wasm-bindgen = "0.2"
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 yansi = "0.5.0"
 
 [dev-dependencies]

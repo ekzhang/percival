@@ -1,4 +1,4 @@
-//! JSON AST emitter
+//! JSON AST emitter (is this really needed??)
 
 use serde_json::to_string_pretty;
 

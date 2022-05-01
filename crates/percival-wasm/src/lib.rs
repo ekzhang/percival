@@ -5,7 +5,7 @@
 use wasm_bindgen::prelude::*;
 use yansi::Paint;
 
-use percival::{ast::Program, codegen, errors::format_errors, parser::Grammar};
+use percival::{ast::Program, codegen_js, errors::format_errors, parser::Grammar};
 
 /// Set a panic listener to display better error messages.
 #[wasm_bindgen(start)]
@@ -52,6 +52,22 @@ impl CompilerResult {
     /// Returns the compiled JavaScript program.
     pub fn js(&self) -> Option<String> {
         self.0.as_ref().ok().map(|(_, js)| js.clone())
+    }
+
+    /// Returns the AST of the program's source.
+    pub fn ast(&self) -> JsValue {
+        self.0
+            .as_ref()
+            .ok()
+            .map(|(prog, _)| match JsValue::from_serde(prog) {
+                Ok(ast) => ast,
+                Err(err) => {
+                    // XX: wasm-bindgen claims to have errors, but doesn't
+                    eprintln!("{} {}", Paint::red("Error:"), err);
+                    JsValue::UNDEFINED
+                }
+            })
+            .unwrap_or(JsValue::UNDEFINED)
     }
 
     /// Returns the names of relations that are dependencies of this program.
