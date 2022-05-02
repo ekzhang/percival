@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import type { Readable } from "svelte/store";
   import { NotebookState } from "@/lib/notebook";
   import { createNotebookStore } from "@/lib/stores";
@@ -31,6 +31,11 @@
         }
       }
       notebookStore = createNotebookStore(NotebookState.load(unmarshal(text)));
+    }
+    // Navigate to hash after the page loads
+    if (window.location.hash) {
+      await tick();
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
     }
   });
 
