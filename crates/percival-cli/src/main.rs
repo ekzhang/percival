@@ -18,7 +18,7 @@ use percival::{
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Debug)]
 enum Emitter {
     JS,
-    JSON,
+    Json,
 }
 
 /// Convenience CLI for testing the Percival language compiler.
@@ -64,7 +64,7 @@ fn main() {
 
     let emitted: Result<String, Box<dyn Error>> = match opt.emit {
         Emitter::JS => compile_js(&prog).map_err(|err| err.into()),
-        Emitter::JSON => compile_json(&prog).map_err(|err| err.into()),
+        Emitter::Json => compile_json(&prog).map_err(|err| err.into()),
     };
 
     match emitted {

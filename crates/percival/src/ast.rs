@@ -1,5 +1,15 @@
 //! Abstract syntax tree definitions for the Percival language.
 
+// How to build AST types:
+//
+//    cargo test ast::export_bindings
+//    mkdir -p $(percival_wasm_pkg)/ast
+//    for ts in $(percival_bindings)/* ; do \
+//    	cp $$ts $(percival_wasm_pkg)/ast/"$$(basename "$${ts%.ts}.d.ts")" ; \
+//    done
+//    sed -i '' -e 's~ast(): any~ast(): import("./ast/Program").Program | undefined~' $(percival_wasm_pkg)/percival_wasm.d.ts
+//
+
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use ts_rs::TS;

@@ -27,6 +27,7 @@ export type CellData = MarkdownCell | CodeCellData | PlotCellData;
 export type CodeCellState = CodeCellData & {
   result: CompilerResult;
   status: "stale" | "pending" | "done";
+  displayDebug: boolean;
   output?: Record<string, object[]>;
   graphErrors?: string;
   runtimeErrors?: string;
@@ -97,6 +98,7 @@ export class NotebookState {
         ...cell,
         result: build(cell.value),
         status: "stale",
+        displayDebug: false,
       });
     } else {
       this.cells.set(id, {

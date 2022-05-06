@@ -1,5 +1,4 @@
 import { compile } from "percival-wasm";
-import type { Program } from "percival-wasm/ast/Program";
 import Worker from "./runtime.worker?worker&inline";
 
 interface CancellablePromise<T> extends Promise<T> {
@@ -13,7 +12,7 @@ type CompilerResultOk = {
   evaluate: (deps: Record<string, object[]>) => EvalPromise;
   deps: string[];
   results: string[];
-  ast: Program | undefined;
+  ast: any;
 };
 
 type CompilerResultErr = {

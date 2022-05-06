@@ -40,12 +40,13 @@ information below is technical documentation intended for contributors.
 Building Percival from scratch requires [Node v16+](https://nodejs.org/en/),
 [NPM v8+](https://www.npmjs.com/), [Rust 1.56+](https://www.rust-lang.org/),
 [Cargo](https://crates.io/), and
-[Wasm-Pack](https://rustwasm.github.io/wasm-pack/) installed on your machine.
+[Wasm-Pack](https://rustwasm.github.io/wasm-pack/) installed on your machine. To
+build the Rust/WebAssembly portion of the project, use the command:
 
 To build the Rust/WebAssembly portion of the project, use the command:
 
 ```shell
-make crates/percival-wasm/pkg
+wasm-pack build --target web crates/percival-wasm
 ```
 
 Next, run `npm install` to install JavaScript dependencies, then run the

@@ -9,6 +9,3 @@ pkg/
 /mocha-setup.js
 /test-loader.js
 /test.html
-
-# auto-generated AST typedefs
-/crates/percival/bindings
