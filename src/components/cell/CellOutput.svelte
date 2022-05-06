@@ -135,7 +135,7 @@
   }
 
   .markdown-output :global(:where(h1, h2, h3, h4, h5, h6) span.icon.icon-link) {
-    transition: background-size 0.15s;
+    @apply transition-all;
   }
 
   .markdown-output
@@ -152,6 +152,6 @@
   .markdown-output
     :global(:where(h1, h2, h3, h4, h5, h6):hover span.icon.icon-link:hover) {
     background-size: 0.9em;
-    filter: invert(0.1);
+    filter: invert(0.2);
   }
 </style>
