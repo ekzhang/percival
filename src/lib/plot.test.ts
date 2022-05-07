@@ -17,11 +17,6 @@ function check(
   }
 }
 
-function fail(str: string) {
-  const plot = buildPlot(str);
-  expect(plot.ok, `should not parse: '${str}'`).to.be.false;
-}
-
 describe("buildPlot", () => {
   it("parses empty string", () => check(""));
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Relation } from "@/lib/types";
+  import type { Relation } from "@/lib/types";
 
   import ValueView from "./ValueView.svelte";
 

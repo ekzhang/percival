@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { RelationSet } from "@/lib/types";
+  import type { RelationSet } from "@/lib/types";
 
   import RelationView from "./RelationView.svelte";
 
