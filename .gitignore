@@ -9,3 +9,5 @@ pkg/
 /mocha-setup.js
 /test-loader.js
 /test.html
+
+/crates/percival/bindings/
