@@ -1,8 +1,10 @@
 <script lang="ts">
+  import type { Relation } from "@/lib/types";
+
   import ValueView from "./ValueView.svelte";
 
   export let name: string;
-  export let values: object[];
+  export let values: Relation;
 
   let displaying = 0;
   $: displaying = Math.min(values.length, 5); // hide long lists

@@ -3,6 +3,7 @@ import { build } from "./runtime";
 import type { CompilerResult } from "./runtime";
 import { buildPlot } from "./plot";
 import type { PlotResult } from "./plot";
+import type { Relation, RelationSet } from "./types";
 
 export type MarkdownCell = {
   type: "markdown";
@@ -27,7 +28,7 @@ export type CellData = MarkdownCell | CodeCellData | PlotCellData;
 export type CodeCellState = CodeCellData & {
   result: CompilerResult;
   status: "stale" | "pending" | "done";
-  output?: Record<string, object[]>;
+  output?: RelationSet;
   graphErrors?: string;
   runtimeErrors?: string;
   evaluateHandle?: () => void;
@@ -36,7 +37,7 @@ export type CodeCellState = CodeCellData & {
 export type PlotCellState = PlotCellData & {
   result: PlotResult;
   status: "stale" | "pending" | "done";
-  output?: string;
+  output?: unknown;
   graphErrors?: string;
   runtimeErrors?: string;
   evaluateHandle?: () => void;
@@ -169,7 +170,7 @@ export class NotebookState {
       if (cell.graphErrors !== undefined) {
         delete cell.graphErrors;
       }
-      if (cell.result.ok && cell.type === "code") {
+      if (cell.result.ok && cell.result.results.length > 0) {
         for (const relation of cell.result.results) {
           const array = creators.get(relation) ?? [];
           array.push(id);
@@ -183,7 +184,7 @@ export class NotebookState {
       if (cellIds.length > 1) {
         for (const id of cellIds) {
           const cell = this.getCell(id);
-          if (cell.type !== "code") throw new Error("unreachable");
+          if (cell.type === "markdown") throw new Error("unreachable");
           clear(cell, "stale");
           cell.graphErrors = `Relation "${relation}" is defined in multiple cells.`;
         }
@@ -211,7 +212,7 @@ export class NotebookState {
         cell.status === "stale"
       ) {
         let depsOk = true;
-        const deps: Record<string, object[]> = {};
+        const deps: RelationSet = {};
         for (const relation of cell.result.deps) {
           const cellIds = creators.get(relation);
           if (!cellIds || cellIds.length != 1) {
@@ -219,15 +220,21 @@ export class NotebookState {
             break;
           }
           const prev = this.getCell(cellIds[0]);
-          if (prev.type !== "code") throw new Error("unreachable");
+          if (prev.type === "markdown") throw new Error("unreachable");
           if (
             prev.status === "done" &&
             prev.result.ok &&
             prev.graphErrors === undefined &&
-            prev.runtimeErrors === undefined &&
-            prev.output?.[relation]
+            prev.runtimeErrors === undefined
           ) {
-            deps[relation] = prev.output[relation];
+            if (prev.type === "code" && prev.output?.[relation]) {
+              deps[relation] = prev.output[relation];
+            } else if (prev.type === "plot" && prev.output !== undefined) {
+              deps[relation] = prev.output as Relation;
+            } else {
+              depsOk = false;
+              break;
+            }
           } else {
             depsOk = false;
             break;
@@ -254,13 +261,15 @@ export class NotebookState {
                 }
               });
           } else {
-            const promise = cell.result.evaluate(deps[cell.result.deps[0]]);
+            const depValues = cell.result.deps.map((dep) => deps[dep]);
+            const promise = cell.result.evaluate(depValues);
             cell.evaluateHandle = () => promise.cancel();
+            const results = cell.result.results; // storing for async callback
             promise
               .then((figure) => {
                 cell.output = figure;
                 cell.status = "done";
-                this.revalidate();
+                this.markUpdate(results);
               })
               .catch((err: Error) => {
                 if (err.message !== "Promise was cancelled by user") {

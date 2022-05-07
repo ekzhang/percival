@@ -1,8 +1,10 @@
 import Immutable from "immutable";
 import { autoType, csvParse, tsvParse } from "d3-dsv";
+import { Relation } from "./types";
+import type { RelationSet } from "./types";
 
 /** Load data from an external source. */
-async function load(url: string): Promise<object[]> {
+async function load(url: string): Promise<Relation> {
   const resp = await fetch(url);
   if (!resp.ok) {
     throw new Error(`Failed to fetch ${url}:\n${await resp.text()}`);
@@ -11,12 +13,12 @@ async function load(url: string): Promise<object[]> {
   if (url.endsWith(".json") || contentType?.match(/application\/json/i)) {
     return resp.json();
   } else if (url.endsWith(".csv") || contentType?.match(/text\/csv/i)) {
-    return csvParse(await resp.text(), autoType);
+    return Relation(csvParse(await resp.text(), autoType));
   } else if (
     url.endsWith(".tsv") ||
     contentType?.match(/text\/tab-separated-values/i)
   ) {
-    return tsvParse(await resp.text(), autoType);
+    return Relation(tsvParse(await resp.text(), autoType));
   } else {
     throw new Error(
       `Unknown file format for ${url}. Only JSON, CSV, and TSV are supported.
@@ -58,17 +60,14 @@ const aggregates: Record<string, (results: any[]) => any> = {
 
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
-let evaluate:
-  | undefined
-  | ((deps: Record<string, object[]>) => Promise<Record<string, object[]>>);
+let evaluate: undefined | ((deps: RelationSet) => Promise<RelationSet>);
 
 function initialize(js: string) {
   if (evaluate) {
     throw new Error("internal: worker was already initialized");
   }
   const fn = new AsyncFunction("__percival_deps", "__percival", js);
-  evaluate = (deps: Record<string, object[]>) =>
-    fn(deps, { Immutable, load, aggregates });
+  evaluate = (deps: RelationSet) => fn(deps, { Immutable, load, aggregates });
 }
 
 onmessage = (event) => {

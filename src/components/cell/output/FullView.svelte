@@ -1,7 +1,9 @@
 <script lang="ts">
+  import type { RelationSet } from "@/lib/types";
+
   import RelationView from "./RelationView.svelte";
 
-  export let value: Record<string, object[]>;
+  export let value: RelationSet;
 </script>
 
 <div class="flex flex-col space-y-3">
