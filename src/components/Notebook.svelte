@@ -6,7 +6,7 @@
   export let notebook: NotebookState;
 </script>
 
-<div class="space-y-3 pt-8 pb-24 px-3">
+<div class="space-y-3 pt-8 pb-24 pl-6 pr-1">
   {#each [...notebook] as [id, cell] (id)}
     <CellDivider
       on:create={(event) => {
