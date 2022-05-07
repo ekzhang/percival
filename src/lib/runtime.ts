@@ -12,6 +12,7 @@ type CompilerResultOk = {
   evaluate: (deps: Record<string, object[]>) => EvalPromise;
   deps: string[];
   results: string[];
+  ast: object | undefined;
 };
 
 type CompilerResultErr = {
@@ -51,6 +52,7 @@ export function build(src: string): CompilerResult {
       },
       deps: result.deps()!,
       results: [...result.results()!],
+      ast: result.ast(),
     };
   } else {
     return { ok: false, errors: result.err()! };

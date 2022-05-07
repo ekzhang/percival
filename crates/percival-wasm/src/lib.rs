@@ -54,6 +54,22 @@ impl CompilerResult {
         self.0.as_ref().ok().map(|(_, js)| js.clone())
     }
 
+    /// Returns the AST of the program's source.
+    pub fn ast(&self) -> JsValue {
+        self.0
+            .as_ref()
+            .ok()
+            .map(|(prog, _)| match JsValue::from_serde(prog) {
+                Ok(ast) => ast,
+                Err(err) => {
+                    // XX: wasm-bindgen claims to have errors, but doesn't
+                    eprintln!("{} {}", Paint::red("Error:"), err);
+                    JsValue::UNDEFINED
+                }
+            })
+            .unwrap_or(JsValue::UNDEFINED)
+    }
+
     /// Returns the names of relations that are dependencies of this program.
     pub fn deps(&self) -> Option<Vec<JsValue>> {
         self.0.as_ref().ok().map(|(prog, _)| {

@@ -1,5 +1,6 @@
 //! Crate containing code for the `percival-cli` binary.
 
+use std::error::Error;
 use std::{
     fs::read_to_string,
     io::{self, Read, Write},
@@ -7,9 +8,15 @@ use std::{
     process::{self, Command, Stdio},
 };
 
-use clap::Parser;
+use clap::{ArgEnum, Parser};
 
-use percival::{codegen::compile, errors::format_errors, parser::Grammar};
+use percival::{codegen::compile as compile_js, errors::format_errors, parser::Grammar};
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Debug)]
+enum Emitter {
+    JS,
+    Json,
+}
 
 /// Convenience CLI for testing the Percival language compiler.
 #[derive(Parser, Debug)]
@@ -22,6 +29,9 @@ struct Opt {
     /// Runs prettier and bat on the output.
     #[clap(short, long)]
     format: bool,
+
+    #[clap(short, long, arg_enum, default_value_t = Emitter::JS)]
+    emit: Emitter,
 }
 
 /// Run the main program.
@@ -49,7 +59,12 @@ fn main() {
         }
     };
 
-    match compile(&prog) {
+    let emitted: Result<String, Box<dyn Error>> = match opt.emit {
+        Emitter::JS => compile_js(&prog).map_err(|err| err.into()),
+        Emitter::Json => prog.json().map_err(|err| err.into()),
+    };
+
+    match emitted {
         Ok(js) => {
             if !opt.format {
                 println!("{}", js);

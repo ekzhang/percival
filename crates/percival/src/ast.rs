@@ -1,9 +1,23 @@
 //! Abstract syntax tree definitions for the Percival language.
 
+// How to build AST types:
+//
+//    cargo test ast::export_bindings
+//    mkdir -p $(percival_wasm_pkg)/ast
+//    for ts in $(percival_bindings)/* ; do \
+//    	cp $$ts $(percival_wasm_pkg)/ast/"$$(basename "$${ts%.ts}.d.ts")" ; \
+//    done
+//    sed -i '' -e 's~ast(): any~ast(): import("./ast/Program").Program | undefined~' $(percival_wasm_pkg)/percival_wasm.d.ts
+//
+
+use serde::Serialize;
+use serde_json::{to_string_pretty, Result as JsonResult};
 use std::collections::{BTreeMap, BTreeSet};
+use ts_rs::TS;
 
 /// A program translation unit in the Percival language.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
 pub struct Program {
     /// Rules that make up the program.
     pub rules: Vec<Rule>,
@@ -11,8 +25,16 @@ pub struct Program {
     pub imports: Vec<Import>,
 }
 
+impl Program {
+    /// Convert the program to a JSON string.
+    pub fn json(&self) -> JsonResult<String> {
+        to_string_pretty(self)
+    }
+}
+
 /// Represents a single Horn clause.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
 pub struct Rule {
     /// Head or implicand of the Horn clause.
     pub goal: Fact,
@@ -21,7 +43,8 @@ pub struct Rule {
 }
 
 /// An element of the right-hand side of a rule.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
 pub enum Clause {
     /// Relational assumption in the rule.
     Fact(Fact),
@@ -32,7 +55,8 @@ pub enum Clause {
 }
 
 /// Literal part of a Horn clause, written in terms of relations.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
 pub struct Fact {
     /// Name of the relation being referenced.
     pub name: String,
@@ -41,7 +65,8 @@ pub struct Fact {
 }
 
 /// A bound or unbound value assigned to part of a relation.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
 pub enum Value {
     /// A simple identifier, which can be either bound or unbound.
     Id(String),
@@ -54,7 +79,8 @@ pub enum Value {
 }
 
 /// Literal values supported by the Percival grammar.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
 pub enum Literal {
     /// A standard floating-point number literal.
     Number(String),
@@ -65,7 +91,8 @@ pub enum Literal {
 }
 
 /// An aggregate operation over stratified dependency relations.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
 pub struct Aggregate {
     /// Name of the aggregate operator, such as `min` or `sum`.
     pub operator: String,
@@ -76,7 +103,8 @@ pub struct Aggregate {
 }
 
 /// An external import from a static JSON dataset.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
 pub struct Import {
     /// Name of the relation being imported.
     pub name: String,
