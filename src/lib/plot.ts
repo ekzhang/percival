@@ -1,14 +1,15 @@
 import Worker from "./plot.worker?worker&inline";
+import type { Relation } from "./types";
 
 interface CancellablePromise<T> extends Promise<T> {
   cancel: () => void;
 }
 
-type EvalPromise = CancellablePromise<string>;
+type EvalPromise = CancellablePromise<unknown>;
 
 type PlotResultOk = {
   ok: true;
-  evaluate: (data: object[]) => EvalPromise;
+  evaluate: (dependencies: Relation[]) => EvalPromise;
   deps: string[];
   results: string[];
 };
@@ -35,22 +36,25 @@ export function buildPlot(src: string): PlotResult {
     };
   }
 
-  // TODO: plot with multiple inputs, single output
-  // https://svelte.dev/repl/be2cbfee41bd416fb812b15c119d086c?version=3.48.0
+  // This mess of regexps parses the first line of an arrow function declaration.
+  // See plot.test.ts for examples of valid declarations.
   const nameFragment = `[a-zA-Z_$][a-zA-Z_$0-9]*`;
-  const resultNameFragment = `(?<resultName>${nameFragment})\\s*=\\s*`;
-  const nextDepNameFragment = `(?:\\s*,\\s*(${nameFragment}))?`;
+  const resultNameFragment = `(?<resultName>${nameFragment})\\s*=\\s*`; // `resultName = `
+  const nextFunctionArg = `(?:\\s*,\\s*(${nameFragment}))?`; // `, nextDepName`
   const either = (l: string, r: string) =>
     "(?:" + [l, r].map((s) => `(?:${s})`).join("|") + ")";
   const fullArgumentsList = [
+    // matches eg `(depName1, depName2)`
     `\\(?`,
-    `(${nameFragment})`,
-    ...new Array(10).fill(undefined).map(() => nextDepNameFragment),
+    `(${nameFragment})`, // `depName1`
+    // If a capture group is repeated, RegExp only retains the last such capture.
+    // To support N arguments, we need N capture groups, or we can do some kind of loop w/ regex.exec(...).
+    ...new Array(10).fill(undefined).map(() => nextFunctionArg),
     `\\)?`,
   ].join("");
-  const emptyArgumentsList = `\\(\\s*\\)`;
-  const argumentsList = either(emptyArgumentsList, fullArgumentsList);
-  const regexp = new RegExp(
+  const emptyArgumentsList = `\\(\\s*\\)`; // `()`
+  const argumentsList = either(emptyArgumentsList, fullArgumentsList); // `()` | `dep` | (dep) | `(dep1, dep2)`
+  const regexp = new RegExp( // `resultName = async (dep1, dep2) =>`
     `^\\s*(?:${resultNameFragment})?(?:async\\s+)?${argumentsList}\\s*=>`,
   );
 
@@ -69,7 +73,7 @@ export function buildPlot(src: string): PlotResult {
 
   return {
     ok: true,
-    evaluate: (data: object[]) => {
+    evaluate: (data: Relation[]) => {
       const worker = new Worker();
       let rejectCb: (reason?: any) => void;
       const promise: Partial<EvalPromise> = new Promise((resolve, reject) => {

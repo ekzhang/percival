@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import init from "percival-wasm";
 import { build } from "./runtime";
+import { Relation, type RelationSet } from "./types";
 
 async function checkProgram({
   src,
@@ -12,8 +13,8 @@ async function checkProgram({
   src: string;
   deps: string[];
   results: string[];
-  input: Record<string, object[]>;
-  output: Record<string, object[]>;
+  input: RelationSet;
+  output: RelationSet;
 }) {
   const result = build(src);
   expect(result.ok).to.be.true;
@@ -56,17 +57,17 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
       deps: ["edge"],
       results: ["tc"],
       input: {
-        edge: [
+        edge: Relation([
           { x: 2, y: 3 },
           { x: 3, y: 4 },
-        ],
+        ]),
       },
       output: {
-        tc: [
+        tc: Relation([
           { x: 2, y: 3 },
           { x: 2, y: 4 },
           { x: 3, y: 4 },
-        ],
+        ]),
       },
     });
   });
@@ -81,16 +82,16 @@ tc(x, y) :- edge(x, y).
       deps: ["edge"],
       results: ["tc"],
       input: {
-        edge: [
+        edge: Relation([
           { x: "hello", y: "world" },
           { x: "world", y: "foo" },
           { x: "foo", y: "baz" },
           { x: "world", y: "bar" },
           { x: "alt-src", y: "foo" },
-        ],
+        ]),
       },
       output: {
-        tc: [
+        tc: Relation([
           { x: "hello", y: "world" },
           { x: "hello", y: "foo" },
           { x: "hello", y: "baz" },
@@ -101,7 +102,7 @@ tc(x, y) :- edge(x, y).
           { x: "alt-src", y: "foo" },
           { x: "alt-src", y: "baz" },
           { x: "foo", y: "baz" },
-        ],
+        ]),
       },
     });
   });
@@ -119,15 +120,15 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
       results: ["edge", "tc"],
       input: {},
       output: {
-        edge: [
+        edge: Relation([
           { x: "foo", y: "bar" },
           { x: "bar", y: "baz" },
-        ],
-        tc: [
+        ]),
+        tc: Relation([
           { x: "foo", y: "bar" },
           { x: "foo", y: "baz" },
           { x: "bar", y: "baz" },
-        ],
+        ]),
       },
     });
   });
@@ -140,7 +141,7 @@ tc(x, y) :- tc(x, y: z), edge(x: z, y).
       results: ["ok"],
       input: {},
       output: {
-        ok: [{ x: true, y: false }],
+        ok: Relation([{ x: true, y: false }]),
       },
     });
   });
@@ -156,7 +157,7 @@ name(value: \`first + " " + last\`) :- person(first, last).
       deps: ["person"],
       results: ["name"],
       input: {
-        person: [
+        person: Relation([
           {
             first: "eric",
             last: "zhang",
@@ -165,10 +166,10 @@ name(value: \`first + " " + last\`) :- person(first, last).
             first: "john",
             last: "doe",
           },
-        ],
+        ]),
       },
       output: {
-        name: [{ value: "eric zhang" }, { value: "john doe" }],
+        name: Relation([{ value: "eric zhang" }, { value: "john doe" }]),
       },
     });
   });
@@ -189,7 +190,7 @@ fib(n: \`n + 1\`, x: \`x1 + x2\`) :-
       results: ["fib"],
       input: {},
       output: {
-        fib: [
+        fib: Relation([
           { n: 0, x: 0 },
           { n: 1, x: 1 },
           { n: 2, x: 1 },
@@ -201,7 +202,7 @@ fib(n: \`n + 1\`, x: \`x1 + x2\`) :-
           { n: 8, x: 21 },
           { n: 9, x: 34 },
           { n: 10, x: 55 },
-        ],
+        ]),
       },
     });
   });
@@ -233,7 +234,7 @@ describe("import directives", () => {
       results: ["crimea"],
       input: {},
       output: {
-        crimea: [
+        crimea: Relation([
           { date: "1854-04-01", wounds: 0, other: 110, disease: 110 },
           { date: "1854-05-01", wounds: 0, other: 95, disease: 105 },
           { date: "1854-06-01", wounds: 0, other: 40, disease: 95 },
@@ -258,7 +259,7 @@ describe("import directives", () => {
           { date: "1856-01-01", wounds: 0, other: 160, disease: 160 },
           { date: "1856-02-01", wounds: 0, other: 100, disease: 100 },
           { date: "1856-03-01", wounds: 0, other: 125, disease: 90 },
-        ],
+        ]),
       },
     });
   });
@@ -274,7 +275,7 @@ count(value: count[1] { iowa() }).
       results: ["iowa", "count"],
       input: {},
       output: {
-        count: [{ value: 51 }],
+        count: Relation([{ value: 51 }]),
       },
     });
   });
@@ -298,7 +299,7 @@ stats(count, max_wounds, min_wounds, total_wounds, mean_wounds) :-
       results: ["crimea", "stats"],
       input: {},
       output: {
-        stats: [
+        stats: Relation([
           {
             count: 24,
             max_wounds: 480,
@@ -306,7 +307,7 @@ stats(count, max_wounds, min_wounds, total_wounds, mean_wounds) :-
             total_wounds: 3770,
             mean_wounds: 3770 / 24,
           },
-        ],
+        ]),
       },
     });
   });
@@ -329,7 +330,7 @@ yearly_mpg(year, value) :-
       results: ["cars", "year", "yearly_mpg"],
       input: {},
       output: {
-        yearly_mpg: [
+        yearly_mpg: Relation([
           {
             value: 33.696551724137926,
             year: "1980-01-01",
@@ -378,7 +379,7 @@ yearly_mpg(year, value) :-
             value: 14.657142857142857,
             year: "1970-01-01",
           },
-        ],
+        ]),
       },
     });
   });
@@ -390,17 +391,17 @@ yearly_mpg(year, value) :-
       deps: ["vertex", "edge"],
       results: ["ok"],
       input: {
-        vertex: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
-        edge: [
+        vertex: Relation([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]),
+        edge: Relation([
           { from: 1, to: 3 },
           { from: 1, to: 2 },
           { from: 2, to: 4 },
           { from: 3, to: 3 },
           { from: 4, to: 1 },
-        ],
+        ]),
       },
       output: {
-        ok: [{ value: 10 }],
+        ok: Relation([{ value: 10 }]),
       },
     });
   });

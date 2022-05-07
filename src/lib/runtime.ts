@@ -1,15 +1,16 @@
 import { compile } from "percival-wasm";
 import Worker from "./runtime.worker?worker&inline";
+import type { RelationSet } from "./types";
 
 interface CancellablePromise<T> extends Promise<T> {
   cancel: () => void;
 }
 
-type EvalPromise = CancellablePromise<Record<string, object[]>>;
+type EvalPromise = CancellablePromise<RelationSet>;
 
 type CompilerResultOk = {
   ok: true;
-  evaluate: (deps: Record<string, object[]>) => EvalPromise;
+  evaluate: (deps: RelationSet) => EvalPromise;
   deps: string[];
   results: string[];
 };

@@ -3,6 +3,7 @@ import { build } from "./runtime";
 import type { CompilerResult } from "./runtime";
 import { buildPlot } from "./plot";
 import type { PlotResult } from "./plot";
+import type { RelationSet } from "./types";
 
 export type MarkdownCell = {
   type: "markdown";
@@ -27,7 +28,7 @@ export type CellData = MarkdownCell | CodeCellData | PlotCellData;
 export type CodeCellState = CodeCellData & {
   result: CompilerResult;
   status: "stale" | "pending" | "done";
-  output?: Record<string, object[]>;
+  output?: RelationSet;
   graphErrors?: string;
   runtimeErrors?: string;
   evaluateHandle?: () => void;
@@ -36,7 +37,7 @@ export type CodeCellState = CodeCellData & {
 export type PlotCellState = PlotCellData & {
   result: PlotResult;
   status: "stale" | "pending" | "done";
-  output?: string;
+  output?: unknown;
   graphErrors?: string;
   runtimeErrors?: string;
   evaluateHandle?: () => void;
@@ -211,7 +212,7 @@ export class NotebookState {
         cell.status === "stale"
       ) {
         let depsOk = true;
-        const deps: Record<string, object[]> = {};
+        const deps: RelationSet = {};
         for (const relation of cell.result.deps) {
           const cellIds = creators.get(relation);
           if (!cellIds || cellIds.length != 1) {
@@ -254,7 +255,8 @@ export class NotebookState {
                 }
               });
           } else {
-            const promise = cell.result.evaluate(deps[cell.result.deps[0]]);
+            const depValues = cell.result.deps.map((dep) => deps[dep]);
+            const promise = cell.result.evaluate(depValues);
             cell.evaluateHandle = () => promise.cancel();
             promise
               .then((figure) => {
