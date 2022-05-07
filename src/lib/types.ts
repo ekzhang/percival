@@ -29,8 +29,8 @@ export function RenderedElement(elementLike: {
 }
 
 export function isRenderedElement(value: unknown): value is RenderedElement {
-  return (
+  return Boolean(
     value instanceof Element ||
-    (typeof value === "object" && value !== null && RenderedElementKey in value)
+      (typeof value === "object" && value && RenderedElementKey in value),
   );
 }

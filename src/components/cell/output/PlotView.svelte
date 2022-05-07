@@ -1,14 +1,24 @@
 <script lang="ts">
   import { isRenderedElement } from "@/lib/types";
+  import RelationView from "./RelationView.svelte";
 
+  export let name: string | undefined;
   export let value: unknown;
 </script>
 
 {#if value}
   {#if isRenderedElement(value)}
     <div class="plot">{@html value.outerHTML}</div>
+  {:else if Array.isArray(value)}
+    <RelationView name={name ?? ""} values={value} />
   {:else}
-    <div>{JSON.stringify(value)}</div>
+    <div class="font-mono text-[0.95rem] text-gray-700">
+      {#if name !== undefined}
+        <span class="font-bold">{name}</span>
+        <span class="text-gray-400">:=</span>
+      {/if}
+      {JSON.stringify(value, undefined, 2)}
+    </div>
   {/if}
 {:else}
   <span class="italic text-sm font-light">(fresh pixels for a plot...)</span>

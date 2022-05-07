@@ -40,7 +40,7 @@
       {#if state.type === "code"}
         <FullView value={state.output} />
       {:else}
-        <PlotView value={state.output} />
+        <PlotView name={state.result.results[0]} value={state.output} />
       {/if}
     {/if}
   </div>
