@@ -12,7 +12,7 @@ type CompilerResultOk = {
   evaluate: (deps: Record<string, object[]>) => EvalPromise;
   deps: string[];
   results: string[];
-  ast: any;
+  ast: object | undefined;
 };
 
 type CompilerResultErr = {
