@@ -11,6 +11,7 @@
 //
 
 use serde::Serialize;
+use serde_json::{to_string_pretty, Result as JsonResult};
 use std::collections::{BTreeMap, BTreeSet};
 use ts_rs::TS;
 
@@ -22,6 +23,13 @@ pub struct Program {
     pub rules: Vec<Rule>,
     /// Imports prefixed with the `import` keyword.
     pub imports: Vec<Import>,
+}
+
+impl Program {
+    /// Convert the program to a JSON string.
+    pub fn json(&self) -> JsonResult<String> {
+        to_string_pretty(self)
+    }
 }
 
 /// Represents a single Horn clause.

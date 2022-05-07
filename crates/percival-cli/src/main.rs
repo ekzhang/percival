@@ -10,10 +10,7 @@ use std::{
 
 use clap::{ArgEnum, Parser};
 
-use percival::{
-    codegen_js::compile as compile_js, codegen_json::compile as compile_json,
-    errors::format_errors, parser::Grammar,
-};
+use percival::{codegen::compile as compile_js, errors::format_errors, parser::Grammar};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Debug)]
 enum Emitter {
@@ -64,7 +61,7 @@ fn main() {
 
     let emitted: Result<String, Box<dyn Error>> = match opt.emit {
         Emitter::JS => compile_js(&prog).map_err(|err| err.into()),
-        Emitter::Json => compile_json(&prog).map_err(|err| err.into()),
+        Emitter::Json => prog.json().map_err(|err| err.into()),
     };
 
     match emitted {

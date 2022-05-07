@@ -5,7 +5,7 @@
 use wasm_bindgen::prelude::*;
 use yansi::Paint;
 
-use percival::{ast::Program, codegen_js, errors::format_errors, parser::Grammar};
+use percival::{ast::Program, codegen, errors::format_errors, parser::Grammar};
 
 /// Set a panic listener to display better error messages.
 #[wasm_bindgen(start)]
@@ -36,7 +36,7 @@ pub fn compile(src: &str) -> CompilerResult {
             .parse(&src[..])
             .map_err(|err| format_errors(&src[..], err))
             .and_then(|prog| {
-                let js = codegen_js::compile(&prog)
+                let js = codegen::compile(&prog)
                     .map_err(|err| format!("{} {}", Paint::red("Error:"), err))?;
                 Ok((prog, js))
             })
