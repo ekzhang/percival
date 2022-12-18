@@ -153,13 +153,15 @@ pub fn parser() -> BoxedParser<'static, Token, Program, Simple<Token>> {
     }
     .labelled("literal");
 
+    let jc = |s: &'static str| just(Ctrl(s));
+
     // Declared here so that we can use it for aggregate subqueries.
     let mut clauses = Recursive::<_, Vec<Clause>, Simple<Token>>::declare();
 
     let value = recursive(|value| {
         let aggregate = ident
-            .then(value.delimited_by(Ctrl("["), Ctrl("]")))
-            .then(clauses.clone().delimited_by(Ctrl("{"), Ctrl("}")))
+            .then(value.delimited_by(jc("["), jc("]")))
+            .then(clauses.clone().delimited_by(jc("{"), jc("}")))
             .map(|((operator, value), subquery)| Aggregate {
                 operator,
                 value: Box::new(value),
@@ -178,7 +180,7 @@ pub fn parser() -> BoxedParser<'static, Token, Program, Simple<Token>> {
     });
 
     let prop = ident
-        .then(just(Ctrl(":")).ignore_then(value.clone()).or_not())
+        .then(jc(":").ignore_then(value.clone()).or_not())
         .try_map(|(id, value), span| {
             let value = value.unwrap_or_else(|| Value::Id(id.clone()));
             match &value {
@@ -192,10 +194,7 @@ pub fn parser() -> BoxedParser<'static, Token, Program, Simple<Token>> {
         .labelled("prop");
 
     let fact = ident
-        .then(
-            prop.separated_by(just(Ctrl(",")))
-                .delimited_by(Ctrl("("), Ctrl(")")),
-        )
+        .then(prop.separated_by(jc(",")).delimited_by(jc("("), jc(")")))
         .map(|(name, props)| Fact {
             name,
             props: props.into_iter().collect(),
@@ -204,10 +203,7 @@ pub fn parser() -> BoxedParser<'static, Token, Program, Simple<Token>> {
 
     let expr = select! { Expr(e) => e };
 
-    let binding = ident
-        .then_ignore(just(Ctrl("=")))
-        .then(value)
-        .labelled("binding");
+    let binding = ident.then_ignore(jc("=")).then(value).labelled("binding");
 
     let clause = choice((
         fact.clone().map(Clause::Fact),
@@ -216,13 +212,13 @@ pub fn parser() -> BoxedParser<'static, Token, Program, Simple<Token>> {
     ))
     .labelled("clause");
 
-    clauses.define(clause.clone().separated_by(just(Ctrl(","))));
+    clauses.define(clause.clone().separated_by(jc(",")));
 
     let rule = fact
         .then(
-            just(Ctrl(":-"))
+            jc(":-")
                 .ignore_then(clauses)
-                .then_ignore(just(Ctrl(".")))
+                .then_ignore(jc("."))
                 .try_map(|clauses, span| {
                     if clauses.is_empty() {
                         Err(Simple::custom(span, "Rule needs at least one clause"))
@@ -230,7 +226,7 @@ pub fn parser() -> BoxedParser<'static, Token, Program, Simple<Token>> {
                         Ok(clauses)
                     }
                 })
-                .or(just(Ctrl(".")).to(Vec::new())),
+                .or(jc(".").to(Vec::new())),
         )
         .map(|(goal, clauses)| Rule { goal, clauses })
         .labelled("rule");
