@@ -53,7 +53,6 @@ export function buildPlot(src: string): PlotResult {
           worker.terminate();
         });
         worker.addEventListener("error", (event) => {
-          console.log(event);
           reject(new Error(event.message));
           worker.terminate();
         });

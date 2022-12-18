@@ -20,7 +20,7 @@
     "@codemirror/view": "^6.7.1",
     "@fontsource/source-serif-pro": "^4.5.9",
     "@lezer/highlight": "^1.1.3",
-    "@observablehq/plot": "^0.4.3",
+    "@observablehq/plot": "^0.6.1",
     "ansi_up": "^5.1.0",
     "codemirror": "^6.0.1",
     "d3-dsv": "^3.0.1",

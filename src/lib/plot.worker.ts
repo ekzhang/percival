@@ -1,6 +1,7 @@
 import * as Plot from "@observablehq/plot";
 import domino from "domino";
 
+globalThis.window = globalThis as any;
 globalThis.document = domino.createDocument();
 
 onmessage = (event) => {
