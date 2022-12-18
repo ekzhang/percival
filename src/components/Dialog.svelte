@@ -5,6 +5,7 @@
   const dispatch = createEventDispatcher();
 </script>
 
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <div
   class="fixed top-0 left-0 bottom-0 right-0 z-50 bg-black bg-opacity-60 flex justify-center items-center"
   on:click={() => dispatch("close")}

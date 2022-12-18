@@ -1,4 +1,4 @@
-import Worker from "./plot.worker?worker&inline";
+import Worker from "./plot.worker?worker";
 
 interface CancellablePromise<T> extends Promise<T> {
   cancel: () => void;
@@ -53,6 +53,7 @@ export function buildPlot(src: string): PlotResult {
           worker.terminate();
         });
         worker.addEventListener("error", (event) => {
+          console.log(event);
           reject(new Error(event.message));
           worker.terminate();
         });
