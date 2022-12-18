@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { basicSetup } from "@codemirror/basic-setup";
+  import { basicSetup } from "codemirror";
   import { EditorState, Compartment } from "@codemirror/state";
   import { EditorView, keymap } from "@codemirror/view";
   import type { KeyBinding } from "@codemirror/view";

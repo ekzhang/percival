@@ -6,7 +6,7 @@ import {
   LanguageSupport,
   LRLanguage,
 } from "@codemirror/language";
-import { styleTags, tags as t } from "@codemirror/highlight";
+import { styleTags, tags as t } from "@lezer/highlight";
 
 let parserWithMetadata = parser.configure({
   props: [
