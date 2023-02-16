@@ -32,6 +32,7 @@ export default defineConfig({
   plugins: [svelte(), lezer()],
   optimizeDeps: {
     entries: ["index.html", "src/**/*.{test,worker}.{js,ts}"],
+    exclude: ["percival-wasm"],
   },
   server: {
     proxy: {
